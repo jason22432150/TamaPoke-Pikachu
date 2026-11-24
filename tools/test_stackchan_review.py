@@ -4,7 +4,7 @@ import struct
 import tempfile
 import unittest
 from stackchan_backup import TABLE_BYTES,capture
-from stackchan_review import expected_layout,firmware_evidence,review_archive,security_state,validate_esp_image
+from stackchan_review import expected_layout,firmware_evidence,review_archive,security_state,validate_esp_image,initial_ota_data
 from test_stackchan_backup import BackupTests
 
 def image(payload=b"abcd", digest=True):
@@ -67,6 +67,10 @@ class ReviewTests(unittest.TestCase):
         for bad in (good[:-1],good+b"x",b"\xe9"):
             with self.assertRaises(ValueError):
                 validate_esp_image(bad)
+
+    def test_initial_ota(self):
+        data=initial_ota_data()
+        self.assertEqual(data,b"\xff"*8192)
 
     def test_firmware(self):
         with tempfile.TemporaryDirectory() as tmp:
