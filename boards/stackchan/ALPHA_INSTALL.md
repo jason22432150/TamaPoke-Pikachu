@@ -56,8 +56,8 @@ Do not share private snapshot data or MAC addresses publicly.
 ## Source bootloader reference (build only)
 
 The Arduino 3.3.0 candidate continues to use its existing precompiled
-bootloader. A separate CI job now builds an independent ESP-IDF v5.5 reference
-from commit 8c750b088c7cd857d079c0eeb495da199b359461 with explicit defaults and
+bootloader. A separate CI job now builds an independent ESP-IDF v6.1 reference
+from commit fff9895c82d744c7237be8847347bdd1b07c6643 with explicit defaults and
 checks both resolved sdkconfig and the bootloader's generated header.
 It uses DIO, 80 MHz, 16 MiB, partition table offset 0x8000; secure boot,
 flash encryption, anti-rollback and virtual eFuse modes must remain disabled.
