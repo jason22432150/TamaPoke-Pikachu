@@ -140,6 +140,25 @@ def rom_write_references(symbols,disassembly,image):
                 direct_references=hits,address_literals=literals,
                 warning="Potential references only; cannot exclude indirect or computed calls, inlining or direct MMIO.")
 
+def efuse_mmio_literals(image):
+    """Inventory explicit programming/control register addresses, not actual stores.
+
+    ESP32-S3 efuse_reg.h and reg_base.h at pinned IDF 051e4c4e.
+    Read-only accesses, incidental data, and computed addresses require review.
+    """
+    offsets=(*range(0,0x2c,4),0x1c8,0x1cc,0x1d4,0x1e8,0x1f4,0x1f8)
+    hits=[]
+    for offset in offsets:
+        address=0x60007000+offset
+        needle=struct.pack("<I",address)
+        pos=image.find(needle)
+        while pos!=-1:
+            hits.append(dict(address=hex(address),image_offset=pos))
+            pos=image.find(needle,pos+1)
+    return dict(register_address_literals=hits,register_count=len(offsets),
+                safety_attested=False,
+                warning="Literal inventory only; does not distinguish reads from writes or detect computed addresses.")
+
 def inspect_efuse_symbols(nm,elf,entry,image):
     output=subprocess.run([str(nm),"--defined-only","--format=posix",str(elf)],
                           check=True,capture_output=True,text=True).stdout
@@ -147,7 +166,9 @@ def inspect_efuse_symbols(nm,elf,entry,image):
     objdump=Path(nm).with_name(Path(nm).name.removesuffix("nm")+"objdump")
     disassembly=subprocess.run([str(objdump),"-d","--no-show-raw-insn",str(elf)],
                                 check=True,capture_output=True,text=True).stdout
-    report["rom_references"]=rom_write_references(output,disassembly,image.read_bytes())
+    data=image.read_bytes()
+    report["rom_references"]=rom_write_references(output,disassembly,data)
+    report["mmio_screen"]=efuse_mmio_literals(data)
     report["elf_sha256"]=sha256(elf)
     report["image_sha256"]=sha256(image)
     return report
