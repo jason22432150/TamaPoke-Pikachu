@@ -81,8 +81,8 @@ def boot_evidence(properties,build_dir,bins,source_commit):
         if props["build.mcu"]!="esp32s3" or int(props["build.bootloader_addr"],0)!=0:
             raise ValueError("wrong bootloader target")
     if props["build.flash_size"]!="16MB":raise ValueError("wrong flash size")
-    if Path(props["runtime.platform.path"]).name!="3.3.0":
-        raise ValueError("expected Arduino ESP32 3.3.0")
+    if Path(props["runtime.platform.path"]).name!="4.0.0":
+        raise ValueError("expected Arduino ESP32 4.0.0")
     sdk=Path(props["compiler.sdk.path"])
     variant=Path(props["build.variant.path"])
     sketch=Path(props["build.source.path"])
@@ -102,7 +102,7 @@ def boot_evidence(properties,build_dir,bins,source_commit):
                         "-o",str(image),str(elf)],check=True)
         if image.read_bytes()!=boot.read_bytes():
             raise ValueError("bootloader differs from reproduced ELF conversion")
-    return dict(schema=1,source_commit=source_commit,arduino_core="3.3.0",
+    return dict(schema=1,source_commit=source_commit,arduino_core="4.0.0",
                 sdk_config_sha256=sha256(config),bootloader_elf_name=elf.name,
                 bootloader_elf_sha256=sha256(elf),bootloader_bin_sha256=sha256(boot),
                 app_sha256=sha256(bins/"TamaPoke.ino.bin"),sdk_security_settings=settings,
