@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from stackchan_flash import install,serial_prefix,probe,identity,after_boot
 from test_stackchan_efuse import runner as efuse_runner
-from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory
+from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory,rom_write_references
 from stackchan_package import package
 from test_stackchan_review import image,table
 
@@ -82,6 +82,20 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(efuse_symbol_inventory("app_main T 40000000 10","app_main")["linked_code_symbols"],[])
         with self.assertRaisesRegex(ValueError,"missing entry"):
             efuse_symbol_inventory("app_main A 40000000","app_main")
+    def test_rom_write_references(self):
+        nm="ets_efuse_program A 40000050\nets_efuse_write_key A 40000060\n"
+        asm="40370000 <app_main>:\n40370000: call8 40000050 <ets_efuse_program>\n40370003: nop\n"
+        data=b"prefix"+bytes.fromhex("60000040")+b"suffix"
+        result=rom_write_references(nm,asm,data)
+        self.assertEqual(result["direct_references"],[
+            dict(symbol="ets_efuse_program",instruction_address="40370000")])
+        self.assertEqual(result["address_literals"],[
+            dict(symbol="ets_efuse_write_key",image_offset=6)])
+        result=rom_write_references(nm,"40370000: nop\n",b"no address")
+        self.assertEqual(result["direct_references"],[])
+        self.assertEqual(result["address_literals"],[])
+        with self.assertRaisesRegex(ValueError,"empty ELF disassembly"):
+            rom_write_references(nm,"",b"")
     def test_sdk_duplicate_assignments(self):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/"sdkconfig"
