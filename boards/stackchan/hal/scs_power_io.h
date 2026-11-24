@@ -15,8 +15,8 @@ class ScsPowerIO final:public ServoPowerIO {
     return boardOk() && m5::In_I2C.readRegister(0x6F,0x03,&mode,1,100000) &&
       (mode&1) && m5::In_I2C.readRegister(0x6F,0x05,&value,1,100000);
   }
-  bool ack(int r) const{return r==1&&bus_.Level==1&&bus_.getState()==0&&bus_.getLastError()==0;}
-  bool readOk(int value) const{return value>=0&&bus_.getState()==0&&bus_.getLastError()==0;}
+  bool ack(int r){return r==1&&bus_.Level==1&&bus_.getState()==0&&bus_.getLastError()==0;}
+  bool readOk(int value){return value>=0&&bus_.getState()==0&&bus_.getLastError()==0;}
   bool readAxis(uint8_t id,ServoFeedback& f,RawRange& range,int& goal){
     int ping=bus_.Ping(id);
     if(ping!=id||!readOk(ping)||!readOk(bus_.FeedBack(id)))return false;
