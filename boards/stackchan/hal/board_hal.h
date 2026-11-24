@@ -6,8 +6,8 @@ constexpr int VIEW_X=40, VIEW_Y=0, VIEW_SIZE=240, GAME_SIZE=466;
 inline LogicalPoint toLogical(TouchPoint p) {
   if (!p.pressed || p.x<VIEW_X || p.x>=VIEW_X+VIEW_SIZE ||
       p.y<VIEW_Y || p.y>=VIEW_Y+VIEW_SIZE) return {0,0,false};
-  return {int16_t((p.x-VIEW_X)*(GAME_SIZE-1)/(VIEW_SIZE-1)),
-          int16_t((p.y-VIEW_Y)*(GAME_SIZE-1)/(VIEW_SIZE-1)),true};
+  return {int16_t(((p.x-VIEW_X)*(GAME_SIZE-1)+(VIEW_SIZE-1)/2)/(VIEW_SIZE-1)),
+          int16_t(((p.y-VIEW_Y)*(GAME_SIZE-1)+(VIEW_SIZE-1)/2)/(VIEW_SIZE-1)),true};
 }
 inline TouchPoint toPhysical(LogicalPoint p) {
   if (!p.valid || p.x<0 || p.x>=GAME_SIZE || p.y<0 || p.y>=GAME_SIZE)
