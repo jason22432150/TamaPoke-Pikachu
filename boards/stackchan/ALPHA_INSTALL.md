@@ -68,8 +68,15 @@ After installing/activating exactly that ESP-IDF version locally:
 This only compiles and exports the reference bootloader, ELF, configuration
 and manifest. It does not connect to StackChan or write any flash/eFuse.
 Alternatively download stackchan-source-bootloader-NOT-FOR-FLASH from CI.
-Do not replace the Arduino bootloader in the Alpha package with this image
-yet. Arduino application compatibility, complete eFuse write-path review,
+CI also assembles stackchan-alpha-0.1.0-source-bootloader-NOT-FOR-FLASH
+from both same-commit artifacts, with the application descriptor, image
+headers and hashes checked. The first paired build passed at 124963d
+(run 45443822957); its application reports v6.1.1-dirty, not proof of
+an unmodified ESP-IDF source tree. Use the paired candidate for offline
+review only. Compile evidence now inventories linked eFuse programming
+symbol names and distinguishes absolute ROM symbols. This is not a
+reachability analysis and does not prove absence of inlined or direct
+register writes. Runtime compatibility, complete eFuse write-path review,
 device partition layout and hardware behavior are not established.
 
 ## Future approved installation (not yet authorized)
