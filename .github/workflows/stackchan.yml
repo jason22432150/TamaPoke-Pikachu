@@ -1,0 +1,29 @@
+name: StackChan smoke build
+on:
+  push:
+    branches: [stackchan]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test game core
+        run: make -C TamaPoke/test CXX=g++ run
+      - name: Test coordinate mapping
+        run: g++ -std=c++11 -Wall -Wextra -Werror boards/stackchan/test_coordinates.cpp -o /tmp/coordinates && /tmp/coordinates
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install dependencies
+        run: |
+          arduino-cli config init
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@3.3.0 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli lib install M5Unified
+      - name: Compile isolated smoke firmware
+        run: bash tools/build_stackchan.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stackchan-smoke-NOT-game
+          path: build/stackchan-smoke/
