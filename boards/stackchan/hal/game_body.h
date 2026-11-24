@@ -14,6 +14,7 @@ class StackChanBody {
   tpkbody::MotionPolicy motion_;
   tpkbody::ServoDiagnostic servoDiagnostic_;
   bool calibrationValid_=false;
+  tpkbody::ServoCenters centers_{-1,-1};
   tpkbody::MotionSafety safety_{true,true,true,true,false,-1};
 
   void readCalibration(int& yaw,int& pitch) {
@@ -22,14 +23,21 @@ class StackChanBody {
     if(p.begin("servo",true)) {
       yaw=p.getInt("zero_pos_1",-1);pitch=p.getInt("zero_pos_2",-1);p.end();
     }
+    centers_={yaw,pitch};
     calibrationValid_=tpkbody::calibrationPresent(yaw,pitch);
     safety_.calibrationValid=calibrationValid_;
   }
-  static void logMotion(tpkbody::MotionCommand c) {
-    if(c.action==tpkbody::Action::Pose)
-      Serial.printf("MOTION PREVIEW yaw=%d pitch=%d speed=%u (NO MOTOR OUTPUT)\n",
-        int(c.pose.yaw),int(c.pose.pitch),unsigned(c.pose.speed));
-    else if(c.action==tpkbody::Action::Stop) Serial.println("MOTION PREVIEW STOP");
+  void logMotion(tpkbody::MotionCommand c) {
+    if(c.action==tpkbody::Action::Pose) {
+      tpkbody::RawPose raw{-1,-1};
+      if(!tpkbody::mapPose(c.pose,centers_,tpkbody::BSP_RAW,tpkbody::BSP_RAW,raw)) {
+        motion_.stop();
+        Serial.println("MOTION PREVIEW STOP invalid calibration envelope");
+        return;
+      }
+      Serial.printf("MOTION PREVIEW yaw=%d pitch=%d speed=%u raw_yaw=%d raw_pitch=%d (NO MOTOR OUTPUT)\n",
+        int(c.pose.yaw),int(c.pose.pitch),unsigned(c.pose.speed),raw.yaw,raw.pitch);
+    } else if(c.action==tpkbody::Action::Stop) Serial.println("MOTION PREVIEW STOP");
   }
 public:
   void updateMotion(const tpkbody::PetState& p,bool menu,tpkbody::Reaction r,uint32_t now) {
@@ -82,15 +90,17 @@ public:
     }
     if(line=="BODY MOTION PREVIEW ON") {
       int yaw,pitch;readCalibration(yaw,pitch);
-      Serial.println(motion_.arm(millis(),safety_)?"DONE preview only; no motor output":"ERR preview unavailable or already enabled");
+      const bool envelope=tpkbody::safeEnvelope(centers_,tpkbody::BSP_RAW,tpkbody::BSP_RAW);
+      Serial.println((envelope && motion_.arm(millis(),safety_))?"DONE preview only; no motor output":"ERR preview unavailable or already enabled");
       return true;
     }
     if(line=="BODY MOTION PREVIEW OFF") {
       stopMotion();Serial.println("DONE preview disabled");return true;
     }
     if(line=="BODY SERVO PROBE") {
+      int yaw,pitch;readCalibration(yaw,pitch);
       servoDiagnostic_.probe(!safety_.sleeping && !safety_.screenOff && !safety_.menu && !safety_.ceremony,
-          !motion_.enabled(),M5.Power.getBatteryLevel());
+          !motion_.enabled(),M5.Power.getBatteryLevel(),centers_);
       return true;
     }
     if(line=="BODY CHECK") {

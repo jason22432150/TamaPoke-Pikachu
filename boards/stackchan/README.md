@@ -183,3 +183,17 @@ No periodic probing and no real game motor movement. Raw position, voltage,
 temperature, movement and torque are reported, not calibrated measurements.
 Requires supervised hardware validation; do not enable external power merely
 to bypass a blocked probe. All existing motion preview behavior is retained.
+
+## Servo coordinate preview and register-limit review
+The preview now converts tenths of a degree into raw position using BSP 1.1.0
+(center + angle * 16 / 50, truncation toward zero). The factory centers are
+read only; the entire +/-10 degree yaw and 0..10 degree pitch envelope must
+fit the BSP raw range 0..1000 with eight raw units of margin. Out-of-range
+requests are rejected rather than clamped. BODY SERVO PROBE additionally reads
+the two angle-limit registers from each servo and reports whether the full
+software envelope fits those limits and whether current feedback is inside it.
+Zero-width/PWM or invalid register limits are blocked for envelope purposes.
+A matching register range is not a measured mechanical stop or a motion permit.
+The preview uses only BSP bounds, not an authorization from the probe. Neither
+command writes position, torque, mode, calibration or power. Actual movement
+remains disabled until device-specific mechanical testing and power validation.

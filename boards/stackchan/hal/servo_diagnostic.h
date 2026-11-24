@@ -2,6 +2,7 @@
 #include <M5Unified.h>
 #include "src/drivers/FTServo_Arduino/src/SCSCL.h"
 #include "servo_diagnostic_policy.h"
+#include "servo_coordinates.h"
 
 namespace tpkbody {
 // Only the read paths of the pinned official BSP driver are exposed here.
@@ -20,20 +21,24 @@ class ServoDiagnostic {
     on=(latch&1)!=0;
     return true;
   }
-  bool readServo(uint8_t id,ServoFeedback& f) {
+  bool readServo(uint8_t id,ServoFeedback& f,RawRange& range) {
     if(bus_.Ping(id)!=id || bus_.getLastError()!=0 || bus_.getState()!=0)return false;
     if(bus_.FeedBack(id)<0 || bus_.getLastError()!=0 || bus_.getState()!=0)return false;
     f={bus_.ReadPos(-1),bus_.ReadVoltage(-1),bus_.ReadTemper(-1),bus_.ReadMove(-1),-1};
     // BSP ReadToqueEnable uses readWord; the torque register is one byte.
     f.torque=bus_.readByte(id,SCSCL_TORQUE_ENABLE);
-    return f.torque>=0 && bus_.getLastError()==0 && bus_.getState()==0;
+    if(f.torque<0 || bus_.getLastError()!=0 || bus_.getState()!=0)return false;
+    range.lo=bus_.readWord(id,SCSCL_MIN_ANGLE_LIMIT_L);
+    if(range.lo<0 || bus_.getLastError()!=0 || bus_.getState()!=0)return false;
+    range.hi=bus_.readWord(id,SCSCL_MAX_ANGLE_LIMIT_L);
+    return range.hi>=0 && bus_.getLastError()==0 && bus_.getState()==0;
   }
   static void print(uint8_t id,const ServoFeedback& f) {
     Serial.printf("SERVO id=%u raw_position=%d voltage_raw=%d temperature_raw=%d moving=%d torque=%d\n",
         unsigned(id),f.position,f.voltage,f.temperature,f.moving,f.torque);
   }
 public:
-  void probe(bool awake,bool previewOff,int battery) {
+  void probe(bool awake,bool previewOff,int battery,ServoCenters centers) {
     bool railOn=false;
     bool correct=M5.getBoard()==m5gfx::board_t::board_M5StackChan;
     bool known=correct && railState(railOn);
@@ -49,8 +54,9 @@ public:
     bus_.IOTimeOut=10;
     bool opened=bus_.begin(UART_NUM_1,1000000,6,7);
     bool ok=false;
+    RawRange yawRange{-1,-1},pitchRange{-1,-1};
     if(opened) {
-      ok=readServo(1,yaw) && feedbackValid(yaw) && readServo(2,pitch);
+      ok=readServo(1,yaw,yawRange) && feedbackValid(yaw) && readServo(2,pitch,pitchRange);
       bus_.end();
     }
     // No automatic retry. A communication/feedback fault stays latched until reboot.
@@ -60,6 +66,12 @@ public:
       return;
     }
     print(1,yaw);print(2,pitch);
+    const bool fits=safeEnvelope(centers,yawRange,pitchRange);
+    const bool inBounds=feedbackInEnvelope({yaw.position,pitch.position},centers,yawRange,pitchRange);
+    Serial.printf("SERVO_LIMITS yaw=%d..%d pitch=%d..%d envelope=%s position=%s\n",
+      yawRange.lo,yawRange.hi,pitchRange.lo,pitchRange.hi,
+      fits?"fits-register-limits-unverified":"blocked",
+      inBounds?"inside-software-envelope":"outside-or-unknown");
     Serial.println("DONE read-only servo feedback; motion disabled");
   }
 };
