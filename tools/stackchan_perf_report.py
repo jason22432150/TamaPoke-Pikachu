@@ -79,6 +79,9 @@ def analyze(lines, min_minutes=60, heap_drop=32768, psram_drop=262144):
             record = parse(line)
         except ValueError:
             malformed += 1
+            if pending is not None:
+                unmatched_time += 1
+                pending = None
             continue
         if record is None:
             continue
@@ -139,7 +142,23 @@ def analyze(lines, min_minutes=60, heap_drop=32768, psram_drop=262144):
         observed = sum(t["window_ms"] for t,_ in pairs)
         span = sum((b["up_ms"]-a["up_ms"])&MAX32 for a,b in zip(mem,mem[1:]))
         first_window = pairs[0][0]["window_ms"] if pairs else 0
-        covered = min(observed,span+first_window)
+        # Union of measured intervals on an unwrapped uptime axis.
+        # A gap followed by overlapping windows must not inflate coverage.
+        elapsed = 0
+        previous = mem[0]["up_ms"]
+        endpoints = {}
+        for m in mem:
+            elapsed += (m["up_ms"] - previous) & MAX32
+            previous = m["up_ms"]
+            endpoints[m["seq"]] = elapsed
+        intervals = sorted((endpoints[m["seq"]] - t["window_ms"],
+                            endpoints[m["seq"]]) for t,m in pairs)
+        covered = 0
+        end = None
+        for left,right in intervals:
+            covered += max(0, right - (left if end is None else max(left,end)))
+            end = right if end is None else max(end,right)
+        covered = min(covered, observed, span+first_window)
         # Ignore memory-only requests for trend comparisons if paired data exists.
         trend_rows = [m for _,m in pairs] or mem
         sessions.append(dict(memory_records=len(mem),paired_windows=len(pairs),
