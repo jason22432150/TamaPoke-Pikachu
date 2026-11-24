@@ -571,7 +571,7 @@ void loop() {
       pet.eating()?tpkbody::Reaction::Eat:
       pet.showHeart()?tpkbody::Reaction::Happy:tpkbody::Reaction::None;
   stackBody.updateMotion(bodyState,galleryOpen||cardOpen||kbOpen||clockOpen||
-      gameOpen||sackOpen||pet.awaitingStarter()||dimStage>0,reaction,millis());
+      gameOpen||sackOpen||pet.awaitingStarter()||dimStage>0||confirmUntil||choiceKind||feedMenuUntil||bathUntil,reaction,millis());
 #endif
 
   // bateria al limite seguro (sin USB): se guarda la partida y se apaga el PMU antes de que la

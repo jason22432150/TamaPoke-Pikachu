@@ -1,13 +1,15 @@
 #pragma once
 #include <M5Unified.h>
 #include "src/drivers/FTServo_Arduino/src/SCSCL.h"
-#include "servo_power_session.h"
+#include "servo_reaction_session.h"
+#include "scs_output.h"
 
 namespace tpkbody {
 // Compile-only bench adapter. Never instantiated by game. The caller must
 // ensure exclusive access to UART1 and the PY32 shared GPIO register.
-class ScsPowerIO final:public ServoPowerIO {
+class ScsPowerIO final:public ServoPowerIO,public ServoOutput {
   SCSCL bus_;
+  ScsOutput output_{bus_};
   bool opened_=false;
   static bool boardOk(){return M5.getBoard()==m5gfx::board_t::board_M5StackChan;}
   static bool readLatch(uint8_t& value){
@@ -28,6 +30,10 @@ class ScsPowerIO final:public ServoPowerIO {
     return readOk(goal)&&feedbackValid(f);
   }
 public:
+  bool writePosition(uint8_t id,uint16_t raw,uint16_t durationMs)override{
+    return opened_&&output_.writePosition(id,raw,durationMs);
+  }
+  bool releaseTorque(uint8_t id)override{return opened_&&output_.releaseTorque(id);}
   bool readRailLatch(bool& on)override{
     uint8_t latch=0;if(!readLatch(latch))return false;
     on=(latch&1)!=0;return true;

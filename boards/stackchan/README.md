@@ -250,3 +250,17 @@ refuses to overwrite it. Inspect the SD offline with a separate backup before
 renaming or deleting recovery files. No automatic recovery or format at boot.
 The original PUT/OK/#/DONE protocol and Waveshare implementation are unchanged.
 Host tests exercise path/size validation, CRC, replacement and rollback faults.
+
+## One-reaction bench integration (compile only)
+ServoReactionSession combines the power state machine, executor and reaction
+poses using a single owned transport. ScsPowerIO exposes the same SCSCL bus
+for feedback and output; no second UART owner. The simulated session ignores
+pre-existing reactions during power-up, waits for a new event, confirms actual
+arrival before issuing the center pose, confirms arrival again, then releases
+torque and powers off. One reaction per session; no automatic re-arm. Safety
+revocation, lost feedback, partial write, timeout or shutdown failure terminate
+the session. No production instance, serial command or physical output is
+added. Preview additionally blocks during feed selection, bath and decision/
+release dialogs. Host integration tests use the same fake power/output bus.
+This does not replace a physical stop, independent watchdog or device-specific
+bench verification.
