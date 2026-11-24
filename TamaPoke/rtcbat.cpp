@@ -6,7 +6,7 @@
 #include <time.h>
 #include <sys/time.h>
 static BatMonitor monitor;
-static uint32_t poll=2000,last=0;
+static uint32_t batteryPollMs=2000,last=0;
 static int pct=-1,mv=0;
 static bool charging=false,usb=true;
 bool rtcBegin(){return M5.Rtc.isEnabled();}
@@ -30,10 +30,10 @@ void rtcSetEpoch(uint32_t e){
 }
 bool batBegin(){return true;}
 void pmuEnablePanel(){}
-void batSetPollMs(uint32_t ms){poll=ms;}
+void batSetPollMs(uint32_t ms){batteryPollMs=ms;}
 bool usbPresentNow(){int v=M5.Power.getVBUSVoltage();return v<0 || v>=4000;}
 static void refresh(){
-  uint32_t now=millis();if(last && now-last<poll)return;last=now?now:1;
+  uint32_t now=millis();if(last && now-last<batteryPollMs)return;last=now?now:1;
   pct=M5.Power.getBatteryLevel();if(pct<0||pct>100)pct=-1;
   mv=M5.Power.getBatteryVoltage();
   auto state=M5.Power.isCharging();
