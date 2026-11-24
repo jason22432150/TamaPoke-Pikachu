@@ -103,3 +103,16 @@ codepoints or a mismatched glyph count. A clean checkout of the pinned source
 at .deps/u8g2 (or U8G2_SOURCE_DIR) is required for the K151 build. CI includes
 localization format/persistence/name checks. Readability and text layout on the
 physical display still require testing. Nickname input remains ASCII.
+
+## Native landscape side panels
+The central 240x240 original game viewport is preserved at x=40..279. The left
+40px strip displays battery, charging, SD availability, level and four needs.
+The right 40px strip provides Feed, Play, Info, Dex and Settings shortcuts
+with 40x44px targets and language-independent compact ASCII labels. Shortcuts
+reuse the original game handlers and are disabled during menus, dialogs,
+ceremonies, starter selection and other blocked states. A side touch can wake
+the screen without triggering an action. Contacts crossing regions are cancelled
+until release; a side press must end within one second without changing key.
+Host tests cover boundaries, wake-only behavior, state transitions, cross-region
+cancellation and timer rollover. This is a native side-panel extension, not a
+complete redesign of all central screens. Physical usability is unverified.

@@ -21,6 +21,7 @@
 #if BOARD_STACKCHAN
 #include "game_display.h"
 #include "game_body.h"
+#include "game_sidebar.h"
 #else
 #include "TouchDrvCSTXXX.hpp"
 #endif
@@ -53,6 +54,8 @@
 #define FW_VERSION "1.19-pika-k151-dev"
 static StackChanHAL stackBoard;
 static StackChanBody stackBody;
+static tpkside::Sidebar stackSidebar;
+static tpkside::TouchRouter stackTouchRouter;
 static StackChanCanvas stackCanvas;
 static StackChanPanel stackPanel;
 static StackChanCanvas *gfx=&stackCanvas;
@@ -501,6 +504,13 @@ void ensureMon() {
   }
 }
 
+#if BOARD_STACKCHAN
+static tpkside::Availability sidebarAvailability(){
+  return {!galleryOpen&&!cardOpen&&!kbOpen&&!clockOpen&&!gameOpen&&!sackOpen&&
+    !pet.awaitingStarter()&&!pet.ceremony&&!confirmUntil&&!choiceKind&&!feedMenuUntil&&!bathUntil,
+    !screenOff&&dimStage==0,pet.isEgg(),pet.sleeping};
+}
+#endif
 void loop() {
 #if BOARD_STACKCHAN
   if(!stackGameReady) { delay(100); return; }
@@ -548,6 +558,8 @@ void loop() {
   tpkbody::PetState bodyState={pet.sleeping,screenOff,pet.evolving(),pet.showHeart(),
       pet.eating(),pet.isEgg(),pet.ceremony!=CER_NONE,batPercent(),pet.lowestStat()};
   stackBody.update(bodyState,millis());
+  stackSidebar.update({sidebarAvailability(),batPercent(),batCharging(),sdReady,
+      pet.level(),pet.fullness,pet.joy,pet.energy,pet.hygiene},millis());
   static bool previousEgg=pet.isEgg();
   static uint32_t hatchUntil=0;
   static bool hatchActive=false;
@@ -967,12 +979,26 @@ void handleTouch() {
   // que detectar el levantamiento). Leer el CST9217 dormido se colgaba ~1s y
   // congelaba el loop entero; SensorLib no respeta el timeout de Wire.
 #if BOARD_STACKCHAN
-  static bool outsideContact=false;
   const auto physical=stackBoard.touch();
+  auto routed=stackTouchRouter.update(physical,sidebarAvailability(),millis());
+  if(routed.cancel) {wasPressed=false;holdFired=false;swallowGesture=true;}
+  if(routed.wake) {screenOff=false;wakeUI();}
+  if(!routed.forward) {
+    using tpkside::Key;
+    if(routed.action!=Key::None) {
+      wakeUI();
+      switch(routed.action){
+        case Key::Feed:onTap(buttons[0].cx,buttons[0].cy);break;
+        case Key::Play:onTap(buttons[1].cx,buttons[1].cy);break;
+        case Key::Profile:onSwipeV(-1);break;
+        case Key::Dex:onSwipe(-1);break;
+        case Key::Settings:onSwipeV(1);break;
+        default:break;
+      }
+    }
+    return;
+  }
   const auto point=toLogical(physical);
-  if(!physical.pressed) outsideContact=false;
-  else if(!point.valid) outsideContact=true;
-  if(outsideContact) { wasPressed=false; return; }
   int16_t x=point.x,y=point.y;
   bool pressed=point.valid;
 #else
