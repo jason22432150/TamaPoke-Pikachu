@@ -61,7 +61,7 @@ data=boot.read_bytes()
 if len(data)>0x8000:
     raise SystemExit("Bootloader exceeds 0x8000 boundary")
 validate_esp_image(data)
-symbols=inspect_efuse_symbols("xtensa-esp32s3-elf-nm",elf,"call_start_cpu0")
+symbols=inspect_efuse_symbols("xtensa-esp32s3-elf-nm",elf,"call_start_cpu0",boot)
 os.umask(0o077)
 out.mkdir(mode=0o700,exist_ok=False)
 files={"bootloader.bin":boot,"bootloader.elf":elf,
