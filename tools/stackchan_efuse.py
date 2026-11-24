@@ -52,8 +52,12 @@ def evidence(out):
     if a!=b:raise ValueError("device identity changed")
     data=fields(out/"summary.json")
     mac=data["MAC"]
-    if not mac["readable"] or str(mac["value"]).lower()!=a:
-        raise ValueError("summary MAC differs from device")
+    # ESP32-S3 EfuseMacField.get() appends block status, e.g. "aa:... (OK)".
+    # Accept a plain MAC for older captures, but never accept a block error.
+    m=re.fullmatch(r"((?:[0-9a-f]{2}:){5}[0-9a-f]{2})(?: \(OK\))?",
+                   str(mac["value"]),re.I)
+    if not mac["readable"] or not m or m[1].lower()!=a:
+        raise ValueError("summary MAC differs from device or has a block error")
     return dict(schema=1,chip="esp32s3",version=VERSION,mac=a,
                 fields=len(data),unreadable=sum(not x["readable"] for x in data.values()),
                 files={n:sha256(out/n) for n in FILES},flash_authorized=False)
