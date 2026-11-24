@@ -9,7 +9,7 @@ Status: NOT RUN on hardware. A green CI is not hardware acceptance.
 - Independently confirm original calibration values and available recovery method.
 - Verify the candidate manifest, commit, toolchain pins and all hashes.
 - Do not proceed if secure boot/encryption or layout are unresolved.
-- Candidate is incomplete for flashing: it lacks OTA selection data and an approved write plan.
+- Candidate includes an erased initial OTA selection image for offline review, but lacks an approved write plan and verified recovery procedure.
 - No experimental write is authorized by this checklist.
 
 ## After a separately reviewed installation
