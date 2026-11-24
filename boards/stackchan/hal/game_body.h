@@ -43,6 +43,15 @@ class StackChanBody {
     } else if(c.action==tpkbody::Action::Stop) Serial.println("MOTION PREVIEW STOP");
   }
 public:
+  // Read-only report usable before START; no motion, expander or game writes.
+  void reportCalibration() {
+    int yaw,pitch;
+    readCalibration(yaw,pitch);
+    Serial.printf("CALIBRATION schema=1 yaw=%d pitch=%d valid=%d envelope=%d motor=disabled\n",
+        yaw,pitch,int(calibrationValid_),
+        int(tpkbody::safeEnvelope(centers_,tpkbody::BSP_RAW,tpkbody::BSP_RAW)));
+    Serial.println("DONE");
+  }
   void updateMotion(const tpkbody::PetState& p,bool menu,tpkbody::Reaction r,uint32_t now) {
     safety_={p.sleeping,p.screenOff,p.ceremony,menu,calibrationValid_,p.batteryPercent};
     logMotion(motion_.update(now,safety_,r));
@@ -106,6 +115,7 @@ public:
           !motion_.enabled(),M5.Power.getBatteryLevel(),centers_);
       return true;
     }
+    if(line=="BODY CALIBRATION") { reportCalibration(); return true; }
     if(line=="BODY CHECK") {
       // Official BSP calibration namespace and signed integer keys.
       // Read only; never create the namespace or synthesize/write default centers.
