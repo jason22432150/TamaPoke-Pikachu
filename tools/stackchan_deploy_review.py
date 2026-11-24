@@ -159,6 +159,27 @@ def efuse_mmio_literals(image):
                 safety_attested=False,
                 warning="Literal inventory only; does not distinguish reads from writes or detect computed addresses.")
 
+def mmio_instruction_window(disassembly,load_address,limit=12):
+    """Collect bounded instruction evidence, not a control-flow or safety proof."""
+    lines=disassembly.splitlines()
+    pattern=re.compile(r"^\s*([0-9a-f]+):\s+(\S+)(?:\s+(.*))?$",re.I)
+    for i,line in enumerate(lines):
+        m=pattern.match(line)
+        if not m or int(m[1],16)!=int(load_address,16):
+            continue
+        window=[]
+        for following in lines[i+1:]:
+            if not following.strip() or re.match(r"^\s*[0-9a-f]+\s+<.*>:",following,re.I):
+                break
+            ins=pattern.match(following)
+            if not ins:
+                break
+            window.append(following.strip())
+            if len(window)>=limit or re.match(r"^(?:b|j|call|ret|loop|ill|break)",ins[2],re.I):
+                break
+        return window
+    return []
+
 def mmio_literal_context(image,hits,disassembly):
     """Map BIN literals to loaded addresses and locate explicit Xtensa literal loads."""
     segments=[]
@@ -183,7 +204,8 @@ def mmio_literal_context(image,hits,disassembly):
             for line in disassembly.splitlines():
                 m=re.match(pattern,line,re.I)
                 if m:
-                    loads.append(dict(instruction_address=m[1],instruction=line.strip()))
+                    loads.append(dict(instruction_address=m[1],instruction=line.strip(),
+                                      following_instructions=mmio_instruction_window(disassembly,m[1])))
         result.append(dict(**hit,loaded_addresses=[hex(a) for a in matches],
                            explicit_literal_loads=loads,classification="unresolved"))
     return result
