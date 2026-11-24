@@ -319,3 +319,11 @@ This compares two verified historical captures of the same MAC and a validated c
 
 ## Deployment scope and eFuse invariant
 Factory restoration, restoration testing and restoration instructions are outside project scope. Existing read-only archive tools remain optional. Historical review reports do not authorize writes. No eFuse programming, secure boot provisioning, flash encryption provisioning, eFuse anti-rollback or forced flashing is permitted. Check the actual build configuration and bootloader provenance, and compare read-only eFuse summaries before and after flashing and first boot. A passing compile or static check is not proof that hardware eFuses remain unchanged.
+
+## Alpha 0.1.0 candidate installation
+See [ALPHA_INSTALL.md](ALPHA_INSTALL.md) for macOS preparation and read-only
+bench preflight. CI now requests a separated candidate artifact explicitly
+labeled NOT-FOR-FLASH. The build re-converts the selected SDK bootloader ELF
+and records SDK/ELF/BIN hashes; this does not attest the actual bootloader
+configuration. The installer has an empty audited-build allowlist and rejects
+all installs before connecting to hardware. No override is supported.
