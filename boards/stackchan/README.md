@@ -282,3 +282,23 @@ Capture a serial log for normal play and idle phases; do not interpret low FPS
 while dimmed/asleep as a rendering failure. Host tests cover window resets,
 rollover, zero frames, disabled mode and wide accumulators. Physical speed,
 memory stability and CPU utilization remain unmeasured.
+
+## Offline soak log analysis
+Capture the USB serial text during separately approved bench use with PERF ON.
+The offline analyzer needs no serial library or device connection:
+
+    python3 tools/stackchan_perf_report.py ~/k151-soak.log --minutes 60 --out ~/k151-soak-report.json
+
+This validates record fields, pairs TIME/MEM by sequence, identifies gaps,
+truncated records, duplicate records and possible reboot/session boundaries,
+and reports observed duration, phase-separated FPS, maximum timing and memory
+statistics. Existing output files are not overwritten. Add --strict to return
+exit status 2 when telemetry requires review. The default decline flags are
+32 KiB heap / 256 KiB PSRAM drops between first and last fifth medians (minimum
+10 records); these are investigation thresholds, not proven memory leaks.
+Largest-free-block decline also merits review. Different workloads and cached
+sprites can legitimately change allocations. Compare repeated equal workloads.
+Boot markers and uptime/sequence discontinuities are evidence, not definitive
+reset detection; dropped logs can hide resets. Phase labels are end-of-window
+snapshots. Telemetry criteria met never implies hardware acceptance, and no
+actual K151 log has been analyzed in CI. Tests use synthetic data only.

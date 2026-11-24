@@ -37,3 +37,7 @@ Do not include credentials, MAC or private flash images in public issues.
 
 Stop on abnormal heat, unintended motion, power faults, resets or display corruption.
 Do not deliberately discharge a lithium battery below safe limits to test shutdown.
+
+Analyze the captured log with tools/stackchan_perf_report.py --minutes 60.
+Review all data-quality and memory-decline flags; repeat an identical workload
+before diagnosing a leak. A clean report cannot replace the checklist.

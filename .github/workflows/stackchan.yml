@@ -32,6 +32,7 @@ jobs:
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_sd_upload_policy.cpp -o /tmp/sd_upload && /tmp/sd_upload
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_servo_reaction_session.cpp -o /tmp/servo_reaction && /tmp/servo_reaction
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_perf_policy.cpp -o /tmp/perf_policy && /tmp/perf_policy
+      - run: python3 tools/test_stackchan_perf_report.py
       - run: python3 tools/test_stackchan_backup.py
       - run: python3 tools/test_stackchan_review.py
       - run: python3 tools/test_stackchan_package.py
