@@ -39,9 +39,11 @@ Use the official K151 download-mode procedure. Do not enable movement.
     ls /dev/cu.*
 
 This lists serial devices on macOS. Replace the example port below with the
-actual K151 port. Keep the device in ROM download mode throughout the check;
-serial tools may toggle reset lines. Do not proceed if the port changes or
-normal firmware unexpectedly starts.
+actual K151 port. Manually enter ROM download mode before invoking probe,
+install or after-boot. The installer now requests --before no-reset and
+--after no-reset for esptool and --before no-reset for espefuse. This avoids
+intentional auto-reset but does not prove serial open/close or USB behavior
+cannot reset the device. Stop if the port changes or normal firmware starts.
 
     python tools/stackchan_flash.py probe --candidate ~/stackchan-alpha-0.1.0 --port /dev/cu.usbmodemXXXX --out ~/k151-alpha-preflight
 
@@ -60,7 +62,8 @@ It will write separated images, read back exact byte ranges and compare the
 eFuse summary before permitting the operator to proceed. No automatic hard
 reset is requested. A hardware-specific download-mode/USB reset procedure
 must be validated to ensure that the application cannot boot prematurely.
-After an explicitly supervised first boot, the after-boot command captures
+After an explicitly supervised first boot, manually re-enter ROM download mode;
+the after-boot command captures
 a third snapshot and compares the observed fields. No such command proves
 that protected or reserved bits are unchanged.
 
