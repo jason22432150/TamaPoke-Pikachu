@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 from stackchan_flash import install,serial_prefix,probe,identity,after_boot
 from test_stackchan_efuse import runner as efuse_runner
-from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory,rom_write_references,efuse_mmio_literals
+from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory,rom_write_references,efuse_mmio_literals,mmio_literal_context
 from stackchan_package import package
 from test_stackchan_review import image,table
 
@@ -129,6 +129,26 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(result["address_literals"],[])
         with self.assertRaisesRegex(ValueError,"empty ELF disassembly"):
             rom_write_references(nm,"",b"")
+    def test_mmio_literal_context(self):
+        import struct
+        header=bytearray(24)
+        header[0]=0xe9
+        header[1]=2
+        data=bytes(header)+struct.pack("<II",0x40370000,8)+b"abcd"+struct.pack("<I",0x60007000)
+        data+=struct.pack("<II",0x42000000,4)+struct.pack("<I",0x60007000)
+        hits=[dict(image_offset=36),dict(image_offset=48),dict(image_offset=20)]
+        asm=("40370100: l32r a8, 40370004 <literal>\n"
+             "40370103: l32r a9, 0x42000000 <literal2>\n"
+             "40370106: l32r a8, 403700040 <different>\n")
+        result=mmio_literal_context(data,hits,asm)
+        self.assertEqual(result[0]["loaded_addresses"],["0x40370004"])
+        self.assertEqual(result[1]["loaded_addresses"],["0x42000000"])
+        self.assertEqual(result[2]["loaded_addresses"],[])
+        self.assertEqual([x["instruction_address"] for x in result[0]["explicit_literal_loads"]],["40370100"])
+        self.assertEqual([x["instruction_address"] for x in result[1]["explicit_literal_loads"]],["40370103"])
+        self.assertTrue(all(x["classification"]=="unresolved" for x in result))
+        with self.assertRaisesRegex(ValueError,"truncated image segment"):
+            mmio_literal_context(data[:-1],hits,asm)
     def test_mmio_literals(self):
         data=b"x"+bytes.fromhex("00700060")+bytes.fromhex("d4710060")+bytes.fromhex("44700060")
         report=efuse_mmio_literals(data)
