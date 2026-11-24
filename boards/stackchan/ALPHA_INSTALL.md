@@ -1,4 +1,7 @@
-# Alpha 0.1.0 macOS bench instructions
+# Alpha 0.1.0 macOS local USB bench instructions
+
+StackChan installation is local only. Do not use the upstream Waveshare web
+installer, Chrome/Edge Web Serial, or any browser-based flashing workflow.
 
 **Status: NOT FOR FLASH. No independently approved bootloader/application tuple exists.**
 All instructions currently stop at read-only checks. Do not bypass the installer
