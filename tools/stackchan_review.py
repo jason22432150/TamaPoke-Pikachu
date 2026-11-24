@@ -2,6 +2,8 @@
 """Offline factory backup review and compile-only firmware evidence. Never flashes."""
 import argparse
 import csv
+import hashlib
+import struct
 import json
 from pathlib import Path
 import re
@@ -45,6 +47,33 @@ def review_archive(out):
                 layout_matches_experimental=report["status"]=="candidate-md5-valid" and report["entries"]==expected_layout(),
                 blockers=blockers)
 
+def validate_esp_image(data):
+    """Validate unsigned standard ESP32-S3 image structure, not bootability."""
+    if len(data)<24 or data[0]!=0xe9 or not 1<=data[1]<=16:
+        raise ValueError("invalid ESP image header")
+    if struct.unpack_from("<H",data,12)[0]!=9 or data[23] not in (0,1):
+        raise ValueError("invalid ESP32-S3 chip ID or digest flag")
+    pos=24
+    checksum=0xef
+    for _ in range(data[1]):
+        if pos+8>len(data):
+            raise ValueError("truncated ESP segment header")
+        _,size=struct.unpack_from("<II",data,pos)
+        pos+=8
+        if size%4 or size>len(data)-pos:
+            raise ValueError("invalid ESP segment size")
+        for value in memoryview(data)[pos:pos+size]:
+            checksum^=value
+        pos+=size
+    end=(pos+16)&~15
+    if end>len(data) or any(data[pos:end-1]) or data[end-1]!=checksum:
+        raise ValueError("invalid ESP image checksum or padding")
+    if data[23]:
+        if len(data)!=end+32 or hashlib.sha256(data[:end]).digest()!=data[end:]:
+            raise ValueError("invalid ESP image digest")
+    elif len(data)!=end:
+        raise ValueError("unexpected ESP image trailing data")
+
 def firmware_evidence(bins,source_commit):
     if not re.fullmatch(r"[0-9a-f]{40}",source_commit):
         raise ValueError("invalid source commit")
@@ -57,9 +86,7 @@ def firmware_evidence(bins,source_commit):
     if not 0<app.stat().st_size<=0x300000 or not 0<boot.stat().st_size<=0x8000:
         raise ValueError("firmware exceeds partition limits")
     for p in (app,boot):
-        with p.open("rb") as f:
-            if f.read(1)!=b"\xe9":
-                raise ValueError("invalid ESP image magic: "+p.name)
+        validate_esp_image(p.read_bytes())
     # ESP-IDF partition binaries may be padded to one 4 KiB sector.
     # Reject arbitrary trailing data and oversized images rather than silently
     # validating only the prefix that contains the partition records.
