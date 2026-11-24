@@ -2,7 +2,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
-from stackchan_flash import install,serial_prefix,probe,identity
+from stackchan_flash import install,serial_prefix,probe,identity,after_boot
+from test_stackchan_efuse import runner as efuse_runner
 from stackchan_deploy_review import plan,check_sdkconfig
 from stackchan_package import package
 from test_stackchan_review import image,table
@@ -24,6 +25,41 @@ class FlashTests(unittest.TestCase):
                     install(c,"/dev/cu.usbmodem1",root/"out",False,never,never)
                 with self.assertRaises(ValueError):
                     probe(c,"@arguments",root/"out",never,never)
+    def test_simulated_serial_install_and_first_boot(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);bins=root/"bins";bins.mkdir()
+            for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
+                (bins/name).write_bytes(image())
+            (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
+            c=root/"candidate";package(bins,c,"a"*40)
+            p=plan(c);memory={0x8000:table()};commands=[]
+            fake_efuse=efuse_runner()
+            def serial(args,log):
+                commands.append(args)
+                self.assertNotIn("--force",args)
+                if "get-security-info" in args:
+                    report="Secure Boot: Disabled\nFlash Encryption: Disabled"
+                elif "flash-id" in args:
+                    report="Detected flash size: 16MB"
+                elif "write-flash" in args:
+                    self.assertIn("no-reset",args)
+                    i=args.index("write-flash")+7
+                    for offset,name in zip(args[i::2],args[i+1::2]):
+                        memory[int(offset,16)]=Path(name).read_bytes()
+                    report="simulated write"
+                elif "read-flash" in args:
+                    offset,size=int(args[-3],16),int(args[-2],16)
+                    Path(args[-1]).write_bytes(memory[offset][:size])
+                    report="simulated read"
+                else:return fake_efuse(args,log)
+                log.write_text(report);return report
+            out=root/"install"
+            with patch("stackchan_flash.APPROVED_BUILDS",frozenset({identity(p)})):
+                self.assertEqual(install(c,"/dev/cu.usbmodem1",out,True,serial)["changed_fields"],[])
+                self.assertEqual(after_boot("/dev/cu.usbmodem1",out,serial)["status"],"observable-summary-unchanged")
+            self.assertEqual(sum("write-flash" in cmd for cmd in commands),1)
+            self.assertEqual(sum("read-flash" in cmd for cmd in commands),5)
+
     def test_port_rejects_argument_injection(self):
         for port in ("@file","--force","/dev/cu.test @file","/tmp/tty"):
             with self.assertRaises(ValueError):serial_prefix(port)
