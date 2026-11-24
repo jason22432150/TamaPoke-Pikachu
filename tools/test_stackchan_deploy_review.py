@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import shutil
-from stackchan_deploy_review import plan,readback,checkpoints
+from stackchan_deploy_review import plan,readback,checkpoints,mmio_instruction_window
 from stackchan_package import package
 from stackchan_efuse import capture
 from test_stackchan_review import image,table
@@ -46,5 +46,21 @@ class DeploymentTests(unittest.TestCase):
             self.assertEqual(checkpoints(a,d,c)["after_write"]["changed_fields"],["WR_DIS"])
             with self.assertRaises(ValueError):checkpoints(a,a,c)
             with self.assertRaises(ValueError):checkpoints(a,b,e)
+
+    def test_mmio_instruction_window(self):
+        disassembly = "\n".join([
+            "40000000: l32r a2, 40001000",
+            "40000003: l32i a3, a2, 0",
+            "40000006: beqz a3, 40000010",
+            "40000009: s32i a3, a2, 4",
+        ])
+        self.assertEqual(mmio_instruction_window(disassembly, "40000000"),
+                         ["40000003: l32i a3, a2, 0",
+                          "40000006: beqz a3, 40000010"])
+        self.assertEqual(mmio_instruction_window(disassembly, "40000000", limit=1),
+                         ["40000003: l32i a3, a2, 0"])
+        self.assertEqual(mmio_instruction_window(disassembly, "40000001"), [])
+        boundary = "40000000: l32r a2, 40001000\n40000003 <next>:\n40000003: ret"
+        self.assertEqual(mmio_instruction_window(boundary, "40000000"), [])
 
 if __name__=="__main__":unittest.main()
