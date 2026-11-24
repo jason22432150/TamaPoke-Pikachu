@@ -301,3 +301,12 @@ Boot markers and uptime/sequence discontinuities are evidence, not definitive
 reset detection; dropped logs can hide resets. Phase labels are end-of-window
 snapshots. Telemetry criteria met never implies hardware acceptance, and no
 actual K151 log has been analyzed in CI. Tests use synthetic data only.
+
+## Offline merged image review
+
+After verifying a local candidate, create and verify a separate merged prefix:
+
+    python3 tools/stackchan_merge.py create --candidate ~/stackchan-candidate --out ~/stackchan-merged-review
+    python3 tools/stackchan_merge.py verify --candidate ~/stackchan-candidate --out ~/stackchan-merged-review
+
+The first command creates a new directory with a sector-aligned merged binary and region/hash manifest. The second reconstructs and compares the bytes. Neither accesses hardware. This is not a full 16 MiB image, migration, or restore image. Gaps are filled with 0xff, including NVS; writing the prefix can destroy original settings and calibration. Never treat this output as an approved flash plan. CI tests synthetic inputs; real-device recovery is still unresolved.
