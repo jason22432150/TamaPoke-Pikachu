@@ -9,10 +9,10 @@ OUT="$1"
 if [[ -e "$OUT" || -L "$OUT" ]]; then
   echo "Output must not already exist" >&2; exit 2
 fi
-: "${IDF_PATH:?Activate ESP-IDF v5.5 using export.sh first}"
-PIN=8c750b088c7cd857d079c0eeb495da199b359461
+: "${IDF_PATH:?Activate ESP-IDF v6.1 using export.sh first}"
+PIN=fff9895c82d744c7237be8847347bdd1b07c6643
 if [[ "$(git -C "$IDF_PATH" rev-parse HEAD)" != "$PIN" ]]; then
-  echo "Expected ESP-IDF v5.5 commit $PIN" >&2; exit 1
+  echo "Expected ESP-IDF v6.1 commit $PIN" >&2; exit 1
 fi
 if [[ -n "$(git -C "$IDF_PATH" status --porcelain --untracked-files=no)" ]]; then
   echo "ESP-IDF tracked sources must be clean" >&2; exit 1
@@ -38,7 +38,8 @@ settings=check_sdkconfig(config)
 extra=("CONFIG_EFUSE_VIRTUAL","CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH",
        "CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE","CONFIG_BOOTLOADER_FACTORY_RESET",
        "CONFIG_BOOTLOADER_APP_TEST","CONFIG_BOOTLOADER_SKIP_VALIDATE_IN_DEEP_SLEEP",
-       "CONFIG_SECURE_BOOT_ENABLE_AGGRESSIVE_KEY_REVOKE")
+       "CONFIG_SECURE_BOOT_ENABLE_AGGRESSIVE_KEY_REVOKE",
+       "CONFIG_BOOTLOADER_SKIP_VALIDATE_ON_POWER_ON","CONFIG_BOOTLOADER_SKIP_VALIDATE_ALWAYS")
 resolved=dict(re.findall(r"^(CONFIG_[A-Z0-9_]+)=(.*)$",config.read_text(),re.M))
 for key in extra:
     if resolved.get(key,"n") not in ("n","0"):
@@ -67,7 +68,7 @@ files={"bootloader.bin":boot,"bootloader.elf":elf,
 for name,src in files.items():
     shutil.copyfile(src,out/name)
 report=dict(schema=1,kind="source-bootloader-reference",source_commit=sys.argv[4],
-            idf_commit=sys.argv[3],flash_authorized=False,bootloader_security_attested=False,
+            idf_version="6.1",idf_commit=sys.argv[3],flash_authorized=False,bootloader_security_attested=False,
             resolved_settings=expected,disabled_security_settings=list(FORBIDDEN+extra),
             files={name:sha256(out/name) for name in files},
             warning="Compiled reference only. Arduino application compatibility and full eFuse behavior require review.")
