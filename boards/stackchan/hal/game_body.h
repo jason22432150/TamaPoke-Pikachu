@@ -4,6 +4,7 @@
 #include "src/drivers/PY32IOExpander/PY32IOExpander.hpp"
 #include "body_policy.h"
 #include "motion_policy.h"
+#include "servo_diagnostic.h"
 
 class StackChanBody {
   m5::PY32IOExpander_Class io_;
@@ -11,6 +12,7 @@ class StackChanBody {
   tpkbody::Color last_{0,0,0};
   uint32_t lastUpdate_=0;
   tpkbody::MotionPolicy motion_;
+  tpkbody::ServoDiagnostic servoDiagnostic_;
   bool calibrationValid_=false;
   tpkbody::MotionSafety safety_{true,true,true,true,false,-1};
 
@@ -85,6 +87,11 @@ public:
     }
     if(line=="BODY MOTION PREVIEW OFF") {
       stopMotion();Serial.println("DONE preview disabled");return true;
+    }
+    if(line=="BODY SERVO PROBE") {
+      servoDiagnostic_.probe(!safety_.sleeping && !safety_.screenOff && !safety_.menu && !safety_.ceremony,
+          !motion_.enabled(),M5.Power.getBatteryLevel());
+      return true;
     }
     if(line=="BODY CHECK") {
       // Official BSP calibration namespace and signed integer keys.

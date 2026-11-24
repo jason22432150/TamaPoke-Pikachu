@@ -25,6 +25,7 @@ jobs:
       - name: Test Traditional Chinese localization
         run: CXXFLAGS="-std=c++17 -O1 -g -Wall -Wextra -Wno-unused-parameter -fno-omit-frame-pointer -DTPK_ENABLE_ZH_TW=1" make -C TamaPoke/test CXX=g++ BUILD=build-zh ${{ matrix.target }}
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_sidebar_policy.cpp -o /tmp/sidebar_policy && /tmp/sidebar_policy
+      - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_servo_diagnostic.cpp -o /tmp/servo_diagnostic && /tmp/servo_diagnostic
       - run: python3 tools/test_stackchan_backup.py
       - run: python3 tools/test_stackchan_review.py
       - run: python3 tools/test_stackchan_package.py

@@ -30,7 +30,7 @@ Do not include credentials, MAC or private flash images in public issues.
 | SD | Read without format; opt-in write only; safe removal and recovery |
 | Power | Battery percent, charging, dim, wake, controlled low-battery behavior |
 | RGB | Explicit ON/OFF; pet transitions, sleep and low battery clear |
-| Motion | Preview only; no physical motion, calibration unchanged |
+| Motion | Preview only; no physical motion, calibration unchanged; BODY SERVO PROBE blocks if rail off and reports read-only feedback only if preconditions hold |
 | Persistence | Game state and language survive reboot; original calibration unchanged |
 | Stability | 60-minute normal play; heap and reset reasons recorded |
 | Recovery | Separately reviewed same-device restoration and factory boot verification |

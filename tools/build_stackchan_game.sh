@@ -42,6 +42,8 @@ if [[ -n "$(git -C "$BSP_DIR" status --porcelain)" ]]; then
 fi
 mkdir -p "$SKETCH/src/drivers"
 cp -R "$BSP_DIR/src/drivers/PY32IOExpander" "$SKETCH/src/drivers/"
+# Official servo transport, without full BSP initialization or calibration writes.
+cp -R "$BSP_DIR/src/drivers/FTServo_Arduino" "$SKETCH/src/drivers/"
 BIN="$STAGE/compiled"
 mkdir -p "$BIN"
 arduino-cli compile --output-dir "$BIN" --warnings all --build-property 'compiler.cpp.extra_flags=-DBOARD_STACKCHAN=1' --fqbn 'esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=enabled,PartitionScheme=app3M_fat9M_16MB' "$SKETCH"

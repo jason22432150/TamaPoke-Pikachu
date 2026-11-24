@@ -167,3 +167,19 @@ state. Reports omit MAC and raw data but should still remain private. A
 matching MAC is not cryptographic attestation or proof of K151 hardware.
 Both commands always report flash_authorized=false and restore_authorized=false.
 Do not use them as a flashing or recovery authorization.
+
+## Read-only servo bus diagnostic
+The pinned FTServo_Arduino driver is compiled into the K151 game. After START,
+BODY SERVO PROBE requests a one-shot read-only diagnostic of yaw ID 1 and pitch
+ID 2 using official UART1 TX6 RX7 at 1 Mbps. Requires the board to be awake,
+not in a menu/ceremony, battery 25-100%, motion preview off, UART1 unclaimed,
+and successful PY32 reads indicating VM EN is already configured as an output
+and its latch is high. The latch is not a physical voltage measurement.
+If the rail is off, the request is blocked; this firmware does not enable it.
+Only Ping/FeedBack/readByte are used, with no torque, position, EEPROM,
+calibration, mode or power writes. UART is closed after the probe. Five-second
+rate limit; any transport or invalid-feedback fault latches until reboot.
+No periodic probing and no real game motor movement. Raw position, voltage,
+temperature, movement and torque are reported, not calibrated measurements.
+Requires supervised hardware validation; do not enable external power merely
+to bypass a blocked probe. All existing motion preview behavior is retained.
