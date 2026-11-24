@@ -197,3 +197,23 @@ A matching register range is not a measured mechanical stop or a motion permit.
 The preview uses only BSP bounds, not an authorization from the probe. Neither
 command writes position, torque, mode, calibration or power. Actual movement
 remains disabled until device-specific mechanical testing and power validation.
+
+## Compile-only actuator execution backend
+The new ServoExecutor and ScsOutput classes implement a future supervised
+position-write backend. They are compile-checked but **not instantiated or
+reachable from the game or serial commands**. No change to existing Preview.
+The executor requires a separately verified bench permit, rail, UART ownership,
+fresh feedback (250 ms), fixed calibration/register limits, stationary axes
+and already enabled torque. It never enables rail/torque or switches mode.
+Position writes require unicast ACK; arrival additionally requires fresh
+post-command feedback within two raw units and stationary axes, within 1.5 s.
+The provisional time-mode command is 1000 ms; it is not a validated speed or
+travel guarantee. Failure, changed limits, stale feedback, or revoked guard
+attempts torque release on both axes, even after a partial write. The concrete
+adapter verifies the torque register after each release. Unconfirmed stop and
+fault are latched in the executor; no automatic retry. Acknowledged torque
+release does not guarantee physical stop or prevent gravity-induced motion.
+Host tests use a fake transport and cover partial writes, stop failure, stale
+feedback, timeout, range change and timer rollover. No actual hardware output
+is enabled until a separately reviewed interlock, power/torque sequence and
+mechanical validation exist.

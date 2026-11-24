@@ -5,6 +5,8 @@
 #include "body_policy.h"
 #include "motion_policy.h"
 #include "servo_diagnostic.h"
+// Compile-check the future actuator adapter without constructing it or routing commands to it.
+#include "scs_output.h"
 
 class StackChanBody {
   m5::PY32IOExpander_Class io_;
