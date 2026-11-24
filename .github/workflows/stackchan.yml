@@ -94,6 +94,25 @@ jobs:
           name: stackchan-K151-diagnostic-NOT-FOR-FLASH
           path: build/stackchan-smoke/
           if-no-files-found: error
+  source-bootloader:
+    runs-on: ubuntu-latest
+    needs: host
+    container:
+      image: espressif/idf:v5.5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile source bootloader reference only
+        shell: bash
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "$IDF_PATH"
+          source "$IDF_PATH/export.sh"
+          bash tools/build_stackchan_bootloader.sh "$RUNNER_TEMP/stackchan-source-bootloader"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stackchan-source-bootloader-NOT-FOR-FLASH
+          path: ${{ runner.temp }}/stackchan-source-bootloader/
+          if-no-files-found: error
   waveshare-regression:
     runs-on: ubuntu-latest
     steps:
