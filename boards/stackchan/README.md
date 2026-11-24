@@ -310,3 +310,9 @@ After verifying a local candidate, create and verify a separate merged prefix:
     python3 tools/stackchan_merge.py verify --candidate ~/stackchan-candidate --out ~/stackchan-merged-review
 
 The first command creates a new directory with a sector-aligned merged binary and region/hash manifest. The second reconstructs and compares the bytes. Neither accesses hardware. This is not a full 16 MiB image, migration, or restore image. Gaps are filled with 0xff, including NVS; writing the prefix can destroy original settings and calibration. Never treat this output as an approved flash plan. CI tests synthetic inputs; real-device recovery is still unresolved.
+
+## Offline partition impact review
+
+    python3 tools/stackchan_impact.py --factory ~/k151-factory-backup --current ~/k151-current-check --candidate ~/stackchan-candidate --report ~/k151-impact.json
+
+This compares two verified historical captures of the same MAC and a validated candidate. It reports estimated sector erase overlaps for separate images and the merged prefix against the current partition map, and marks changed partition layouts even when their bytes would not be erased. It never connects to a device, emits write commands, migrates NVS or establishes calibration location. A zero-overlap result is not proof of data preservation after boot. Unknown partition maps block interpretation. Keep all archives private; this report is not a flash or restore authorization.
