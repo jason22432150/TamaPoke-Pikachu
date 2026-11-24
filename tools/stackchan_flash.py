@@ -34,6 +34,7 @@ def serial_prefix(port):
             "--baud","115200","--before","default-reset","--after","no-reset"]
 
 def probe(candidate,port,out,runner=run_logged,snapshot=capture):
+    candidate=candidate.resolve();out=out.absolute()
     p=plan(candidate)
     cmd=serial_prefix(port)
     out.mkdir(mode=0o700,exist_ok=False)
@@ -64,6 +65,7 @@ def probe(candidate,port,out,runner=run_logged,snapshot=capture):
     return p,baseline
 
 def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture):
+    candidate=candidate.resolve();out=out.absolute()
     p=plan(candidate)
     require_approved(p) # MUST precede serial connection, even in CLI.
     if not confirm:
@@ -94,8 +96,12 @@ def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture):
     return result
 
 def after_boot(port,out,runner=run_logged,snapshot=capture):
-    if not (out/"write-verified.json").is_file():
+    serial_prefix(port)
+    out=out.absolute()
+    if out.is_symlink() or not (out/"write-verified.json").is_file():
         raise ValueError("missing completed write verification")
+    require_approved(plan(out/"candidate"))
+    readback(out/"candidate",out/"readback")
     verify(out/"before");verify(out/"after-write")
     if compare(out/"before",out/"after-write")["changed_fields"]:
         raise ValueError("eFuse changed before boot")
