@@ -41,9 +41,9 @@ Use the official K151 download-mode procedure. Do not enable movement.
 This lists serial devices on macOS. Replace the example port below with the
 actual K151 port. Manually enter ROM download mode before invoking probe,
 install or after-boot. The installer now requests --before no-reset and
---after no-reset for esptool and --before no-reset for espefuse. This avoids
-intentional auto-reset but does not prove serial open/close or USB behavior
-cannot reset the device. Stop if the port changes or normal firmware starts.
+--after no-reset for esptool and --before no-reset for espefuse. This avoids intentional hardware reset, but esptool 5.1.0 may perform a
+soft reset to return from its RAM flasher stub to the ROM loader. Serial
+open/close and USB behavior also require physical validation. Stop if the port changes or normal firmware starts.
 
     python tools/stackchan_flash.py probe --candidate ~/stackchan-alpha-0.1.0 --port /dev/cu.usbmodemXXXX --out ~/k151-alpha-preflight
 
@@ -51,7 +51,11 @@ Probe only reads chip identity, eFuse summary, security, flash capacity and
 the partition table. It requires a new private directory and will fail if
 the current layout differs from the experimental one. That is expected
 for some factory devices; do not erase or repartition to bypass it.
-Do not share private snapshot data or MAC addresses publicly.
+If the chip and security checks pass, layout-report.json records both
+partition tables and their match status, even when they differ. This report
+omits MAC and eFuse values and can be provided for layout review. If the
+probe fails earlier, report only the error message. Do not share the private
+before/ snapshot, raw eFuse summary, or MAC addresses publicly.
 
 ## Source bootloader reference (build only)
 
