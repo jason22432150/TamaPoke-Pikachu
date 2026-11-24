@@ -264,3 +264,21 @@ added. Preview additionally blocks during feed selection, bath and decision/
 release dialogs. Host integration tests use the same fake power/output bus.
 This does not replace a physical stop, independent watchdog or device-specific
 bench verification.
+
+## Opt-in runtime performance telemetry
+After START on a separately approved test installation, send PERF ON to enable
+five-second windows, PERF? for an immediate report (memory only if disabled),
+and PERF OFF to stop. PERF_TIME counts actual central framebuffer flush calls,
+reports achieved FPS in thousandths, render-call/flush/loop-start-gap mean and
+maximum microseconds, and gaps >=100 ms. Render includes its flush, so do not
+add them. The sidebar is not counted as a central frame. Loop gaps include idle,
+serial, storage, rendering and logging; neither loop timing nor CPU MHz is CPU
+utilization. PERF_MEM reports current heap, boot minimum heap, largest internal
+8-bit allocation, free/total PSRAM, largest PSRAM allocation, reset reason and
+CPU MHz. Both records share a sequence number; USB CDC may drop records.
+Logging is off by default, uses fixed-size counters, and does not write SD/NVS.
+Screen-off/dim/game flags are snapshots at report time, not per-frame labels.
+Capture a serial log for normal play and idle phases; do not interpret low FPS
+while dimmed/asleep as a rendering failure. Host tests cover window resets,
+rollover, zero frames, disabled mode and wide accumulators. Physical speed,
+memory stability and CPU utilization remain unmeasured.

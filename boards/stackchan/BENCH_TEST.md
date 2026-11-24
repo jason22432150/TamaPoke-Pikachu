@@ -32,7 +32,7 @@ Do not include credentials, MAC or private flash images in public issues.
 | RGB | Explicit ON/OFF; pet transitions, sleep and low battery clear |
 | Motion | Preview only; no physical motion, calibration unchanged; BODY SERVO PROBE blocks if rail off and reports read-only feedback only if preconditions hold |
 | Persistence | Game state and language survive reboot; original calibration unchanged |
-| Stability | 60-minute normal play; heap and reset reasons recorded |
+| Stability | 60-minute normal play with PERF ON; capture paired PERF_TIME/PERF_MEM records, compare active vs idle FPS, min/largest heap, PSRAM and reset reason; PERF OFF afterwards |
 | Recovery | Separately reviewed same-device restoration and factory boot verification |
 
 Stop on abnormal heat, unintended motion, power faults, resets or display corruption.

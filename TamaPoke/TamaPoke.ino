@@ -22,6 +22,7 @@
 #include "game_display.h"
 #include "game_body.h"
 #include "game_sidebar.h"
+#include "game_perf.h"
 #else
 #include "TouchDrvCSTXXX.hpp"
 #endif
@@ -57,6 +58,7 @@ static StackChanBody stackBody;
 static tpkside::Sidebar stackSidebar;
 static tpkside::TouchRouter stackTouchRouter;
 static StackChanCanvas stackCanvas;
+static tpkperf::GamePerf stackPerf;
 static StackChanPanel stackPanel;
 static StackChanCanvas *gfx=&stackCanvas;
 static StackChanPanel *panel=&stackPanel;
@@ -480,6 +482,7 @@ void setup() {
 #endif
   lastInteract = millis();
 #if BOARD_STACKCHAN
+  stackCanvas.attachPerf(stackPerf.monitor());
   stackGameReady=true;
 #endif
 }
@@ -514,6 +517,7 @@ static tpkside::Availability sidebarAvailability(){
 void loop() {
 #if BOARD_STACKCHAN
   if(!stackGameReady) { delay(100); return; }
+  if(stackPerf.monitor().enabled())stackPerf.monitor().loopStart(micros());
   stackBoard.update();
 #endif
   uint32_t now = millis();
@@ -639,7 +643,14 @@ void loop() {
   bool drewFrame = false;
   if (interval && now - lastRender >= interval) {
     lastRender = now;
+#if BOARD_STACKCHAN
+    const bool measure=stackPerf.monitor().enabled();
+    const uint32_t started=measure?micros():0;
+#endif
     drewFrame = render();
+#if BOARD_STACKCHAN
+    if(measure)stackPerf.monitor().rendered(micros()-started);
+#endif
 #if BOARD_AMOLED_175C
     // renderSack's capture worker has joined: only the loop changes hits/UI.
     if (sackOpen && !screenIsLocked()) drainTrainingTouch();
@@ -648,6 +659,9 @@ void loop() {
   // cede la CPU en los pases que no dibujan: sin esto el loop gira a pleno rendimiento
   // entre frames; 1 ms no se nota en el tactil (se lee cada 20 ms) y el frame no se retrasa
   if (!drewFrame) idleWait(pc);
+#if BOARD_STACKCHAN
+  stackPerf.tick(screenOff,dimStage>0,gameOpen||sackOpen);
+#endif
 }
 
 // estado de consumo actual (ver power.h)
@@ -769,6 +783,7 @@ void handleSerial() {
   }
 #endif
 #if BOARD_STACKCHAN
+  if(stackPerf.command(line,screenOff,dimStage>0,gameOpen||sackOpen)) return;
   if(stackBody.command(line)) return;
 #endif
   if (sdSerialCommand(line)) return;

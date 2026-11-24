@@ -1,12 +1,15 @@
 #pragma once
 #include <Arduino_GFX_Library.h>
 #include "stackchan_hal.h"
+#include "perf_policy.h"
 class StackChanCanvas final : public Arduino_Canvas {
   static constexpr int STRIP_ROWS=8;
   uint16_t strip_[VIEW_SIZE*STRIP_ROWS];
   uint16_t xMap_[VIEW_SIZE];
+  tpkperf::Monitor* perf_=nullptr;
 public:
   StackChanCanvas():Arduino_Canvas(466,466,nullptr){}
+  void attachPerf(tpkperf::Monitor& monitor){perf_=&monitor;}
   bool begin(int32_t = GFX_NOT_DEFINED) override {
     if(!_framebuffer) _framebuffer=static_cast<uint16_t*>(
       heap_caps_malloc(466UL*466*2,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
@@ -16,6 +19,8 @@ public:
   }
   void flush(bool = false) override {
     if(!_framebuffer) return;
+    const bool measure=perf_&&perf_->enabled();
+    const uint32_t started=measure?micros():0;
     // Arduino_Canvas stores native uint16_t RGB565. M5GFX's uint16_t
     // overload interprets it as rgb565_t only with swap enabled.
     const bool previousSwap=M5.Display.getSwapBytes();
@@ -30,6 +35,7 @@ public:
     }
     M5.Display.endWrite();
     M5.Display.setSwapBytes(previousSwap);
+    if(measure)perf_->flushed(micros()-started);
   }
 };
 struct StackChanPanel { void setBrightness(uint8_t value){M5.Display.setBrightness(value);} };
