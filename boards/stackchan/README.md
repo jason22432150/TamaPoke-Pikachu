@@ -1,7 +1,7 @@
 # StackChan K151 experimental port
 This branch is NOT ready to flash. The diagnostic uses a provisional standalone
-16 MiB partition layout, NOT the factory layout. A full flash backup, security
-state and actual factory partition map must be checked on the target unit first.
+16 MiB partition layout, NOT the factory layout. Security state and actual partition map must be checked on the target unit first.
+Full factory backup is optional. Factory firmware restoration is outside project scope.
 There is no upload command, web installer or factory-compatible release.
 The smoke sketch does not write Preferences, mount/format SD, touch servos,
 or directly program PMIC registers. M5Unified itself initializes board hardware
@@ -30,7 +30,7 @@ It uses the dedicated tpk-k151-game namespace, opt-in START and SDWRITE ON,
 SPI SD with no auto-format, M5Unified RTC/power/speaker APIs. The Waveshare
 sleep GPIO path is excluded. Runtime and all interactions remain unverified;
 no full game artifact is published. Motor/RGB and native widescreen redesign
-are outside this target. Do not flash before factory backup/security/layout review.
+are outside this target. Do not flash before security/layout review.
 
 The first full K151 game build passed at d60d4a0 (Actions run 45306960321):
 1,588,595 bytes of a 3 MiB app slot. Subsequent changes require new CI.
@@ -53,7 +53,7 @@ in .deps/stackchan-bsp (or STACKCHAN_BSP_DIR). CI checks out that exact commit.
 Motor movement is deliberately not implemented until real calibration and
 mechanical limits have been checked. No full game binary is published.
 
-## Read-only factory flash archive (before any experimental flash)
+## Optional read-only factory flash archive
 Python 3.11+ and esptool 5.x are required. Use a private local directory outside
 this repository; flash archives can include Wi-Fi credentials and device secrets.
 Disconnect other ESP boards, stop serial monitors, connect K151 via USB and
@@ -76,7 +76,7 @@ The tool does not authorize recovery or flashing. Keep both images and reports
 privately on a separate drive; never commit them. eFuses, external SD, and separate
 controller firmware are not backed up by this tool. Security settings and actual
 partition layout must be reviewed separately, and restoration is device-specific.
-No automated restore command is provided until those facts are established.
+Factory restoration is handled externally and will not be implemented here.
 
 ## Motion preview (no physical output)
 After START, BODY MOTION PREVIEW ON enables a serial-only preview for up to 60
@@ -316,3 +316,6 @@ The first command creates a new directory with a sector-aligned merged binary an
     python3 tools/stackchan_impact.py --factory ~/k151-factory-backup --current ~/k151-current-check --candidate ~/stackchan-candidate --report ~/k151-impact.json
 
 This compares two verified historical captures of the same MAC and a validated candidate. It reports estimated sector erase overlaps for separate images and the merged prefix against the current partition map, and marks changed partition layouts even when their bytes would not be erased. It never connects to a device, emits write commands, migrates NVS or establishes calibration location. A zero-overlap result is not proof of data preservation after boot. Unknown partition maps block interpretation. Keep all archives private; this report is not a flash or restore authorization.
+
+## Deployment scope and eFuse invariant
+Factory restoration, restoration testing and restoration instructions are outside project scope. Existing read-only archive tools remain optional. Historical review reports do not authorize writes. No eFuse programming, secure boot provisioning, flash encryption provisioning, eFuse anti-rollback or forced flashing is permitted. Check the actual build configuration and bootloader provenance, and compare read-only eFuse summaries before and after flashing and first boot. A passing compile or static check is not proof that hardware eFuses remain unchanged.
