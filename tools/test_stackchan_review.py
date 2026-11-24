@@ -30,6 +30,19 @@ class ReviewTests(unittest.TestCase):
             self.assertFalse(r["layout_matches_experimental"])
             self.assertEqual(r["secure_boot"],"unknown")
 
+    def test_partition_image_padding(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out=Path(tmp)
+            for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
+                (out/name).write_bytes(b"\xe9"+b"\0"*100)
+            part=out/"TamaPoke.ino.partitions.bin"
+            part.write_bytes(table().ljust(0x1000,b"\xff"))
+            self.assertEqual(len(firmware_evidence(out,"a"*40)["files"]),3)
+            for invalid in (table()+b"\x00", table().ljust(0x1001,b"\xff"), table()[:-1]):
+                part.write_bytes(invalid)
+                with self.assertRaises(ValueError):
+                    firmware_evidence(out,"a"*40)
+
     def test_firmware(self):
         with tempfile.TemporaryDirectory() as tmp:
             out=Path(tmp)
