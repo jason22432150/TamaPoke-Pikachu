@@ -1,5 +1,7 @@
 from pathlib import Path
 import tempfile
+import hashlib
+import json
 import unittest
 from unittest.mock import patch
 from stackchan_flash import install,serial_prefix,probe,identity,after_boot
@@ -61,6 +63,37 @@ class FlashTests(unittest.TestCase):
                 self.assertEqual(after_boot("/dev/cu.usbmodem1",out,serial)["status"],"observable-summary-unchanged")
             self.assertEqual(sum("write-flash" in cmd for cmd in commands),1)
             self.assertEqual(sum("read-flash" in cmd for cmd in commands),5)
+
+    def test_readonly_layout_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);bins=root/"bins";bins.mkdir()
+            for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
+                (bins/name).write_bytes(image())
+            (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
+            c=root/"candidate";package(bins,c,"a"*40)
+            raw=bytearray(table())
+            raw[12:15]=b"old"
+            terminator=next(i for i in range(0,len(raw),32) if raw[i:i+2]==b"\xeb\xeb")
+            raw[terminator+16:terminator+32]=hashlib.md5(raw[:terminator]).digest()
+            fake=efuse_runner()
+            def serial(args,log):
+                self.assertNotIn("write-flash",args)
+                if "get-security-info" in args:msg="Secure Boot: Disabled\nFlash Encryption: Disabled"
+                elif "flash-id" in args:msg="Detected flash size: 16MB"
+                elif "read-flash" in args:
+                    Path(args[-1]).write_bytes(raw);msg="simulated read"
+                else:return fake(args,log)
+                log.write_text(msg);return msg
+            out=root/"probe"
+            with self.assertRaisesRegex(ValueError,"layout differs"):
+                probe(c,"/dev/cu.usbmodem1",out,serial)
+            report=json.loads((out/"layout-report.json").read_text())
+            self.assertFalse(report["layout_matches"])
+            self.assertFalse(report["flash_authorized"])
+            self.assertFalse(report["efuse_write_allowed"])
+            self.assertNotIn("mac",report)
+            self.assertEqual(report["current_partitions"][0]["label"],"old")
+            self.assertEqual(report["candidate_partitions"][0]["label"],"nvs")
 
     def test_port_rejects_argument_injection(self):
         for port in ("@file","--force","/dev/cu.test @file","/tmp/tty"):
