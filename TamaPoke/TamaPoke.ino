@@ -389,7 +389,11 @@ void setup() {
   M5.Display.println("Serial START to initialize");
   for(;;) {
     stackBoard.update();
-    if(Serial.available()) { String s=Serial.readStringUntil('\n'); s.trim(); if(s=="START") break; }
+    if(Serial.available()) {
+      String s=Serial.readStringUntil('\n'); s.trim();
+      if(s=="START") break;
+      if(s=="BODY CALIBRATION") stackBody.reportCalibration();
+    }
     delay(20);
   }
   setenv("TZ","UTC0",1); tzset();
