@@ -217,3 +217,21 @@ Host tests use a fake transport and cover partial writes, stop failure, stale
 feedback, timeout, range change and timer rollover. No actual hardware output
 is enabled until a separately reviewed interlock, power/torque sequence and
 mechanical validation exist.
+
+## Compile-only motor power session
+ServoPowerSession and ScsPowerIO are compile-checked, with no game or serial
+caller. A future supervised fixture must independently establish exclusive
+hardware ownership, actual mechanical safety, physical emergency stop and a
+bench permit. The session refuses an unknown or already-on VM EN latch, opens
+UART1, rechecks the latch, requests rail on and waits at least 250 ms. It
+requires fresh stationary feedback, torque off, valid angle-limit registers,
+and existing goal positions exactly matching measured positions before enabling
+torque. Both axes are then rechecked. It never writes a new goal or changes
+servo mode, GPIO mode, pull settings, EEPROM or NVS. The adapter preserves other
+GPIO output bits and verifies readback; latch readback is not proof of voltage.
+Fault/stop attempts both torque releases if activation was attempted, then
+rail off and UART close; failure latches ShutdownUnconfirmed. The physical
+emergency stop remains essential. Host fake-I/O tests cover partial activation,
+failed shutdown, stale samples, unsafe initial goal, existing rail ownership,
+voltage-latch request failure and timer rollover. Actual power/torque sequence
+and mechanical behavior remain unverified, and normal firmware cannot invoke it.
