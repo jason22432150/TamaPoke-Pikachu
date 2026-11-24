@@ -69,6 +69,19 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(prefix[prefix.index("--before")+1],"no-reset")
         self.assertEqual(prefix[prefix.index("--after")+1],"no-reset")
         self.assertNotIn("--force",serial_prefix("/dev/cu.usbmodem1"))
+    def test_sdk_duplicate_assignments(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            p=Path(tmp)/"sdkconfig"
+            base='CONFIG_IDF_TARGET="esp32s3"\n'
+            p.write_text(base+base+'CONFIG_SECURE_BOOT=n\n# CONFIG_SECURE_BOOT is not set\n')
+            self.assertEqual(check_sdkconfig(p)["CONFIG_SECURE_BOOT"],"n")
+            for body in ('CONFIG_SECURE_BOOT=y\nCONFIG_SECURE_BOOT=n\n',
+                         '# CONFIG_SECURE_BOOT is not set\nCONFIG_SECURE_BOOT=y\n',
+                         'CONFIG_SECURE_BOOT=y\n# CONFIG_SECURE_BOOT is not set\n',
+                         'CONFIG_IDF_TARGET="esp32"\n'):
+                p.write_text(base+body)
+                with self.assertRaisesRegex(ValueError,"conflicting SDK setting"):
+                    check_sdkconfig(p)
     def test_sdk_security(self):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/"sdkconfig"
