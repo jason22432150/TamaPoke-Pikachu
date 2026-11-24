@@ -6,11 +6,12 @@ import os
 from pathlib import Path
 import shutil
 import sys
-from stackchan_review import firmware_evidence
+from stackchan_review import firmware_evidence, initial_ota_data
 
 NOTICE = """EXPERIMENTAL K151 BENCH CANDIDATE -- NOT APPROVED FOR FLASH
 This package has three compiled images, not a complete flash image.
-No OTA selection data, factory image, installer or restore command is included.
+An erased initial OTA selection image is included for offline review only.
+No factory image, installer or restore command is included.
 The partition layout is experimental. Verify the original device backup,
 current security state, actual layout and recovery procedure before any write.
 Passing package verification does not authorize flashing.
@@ -27,6 +28,8 @@ def package(bins, out, commit):
                 shutil.copyfileobj(f,dest)
         if firmware_evidence(out,commit)!=evidence:
             raise ValueError("copied image changed")
+        with (out/"ota_data_initial.bin").open("xb") as f:
+            f.write(initial_ota_data())
         (out/"READ-ME-NOT-FOR-FLASH.txt").write_text(NOTICE,encoding="utf-8")
         with (out/"manifest.json").open("x",encoding="utf-8") as f:
             json.dump(evidence,f,indent=2);f.write("\n")
@@ -47,7 +50,10 @@ def verify_package(out):
         raise ValueError("manifest or firmware hash mismatch")
     if notice.read_text(encoding="utf-8")!=NOTICE:
         raise ValueError("missing or changed safety notice")
-    names={x["name"] for x in expected["files"]}|{"manifest.json",notice.name}
+    ota=out/expected["initial_ota"]["name"]
+    if ota.is_symlink() or not ota.is_file() or ota.stat().st_size!=8192 or ota.read_bytes()!=initial_ota_data():
+        raise ValueError("invalid initial OTA selection image")
+    names={x["name"] for x in expected["files"]}|{"manifest.json",notice.name,ota.name}
     if {p.name for p in out.iterdir()}!=names:
         raise ValueError("unexpected package contents")
     return expected
