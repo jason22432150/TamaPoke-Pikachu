@@ -134,7 +134,7 @@ permission to flash. Actual device security, layout and recovery still require
 review before preparing an authorized hardware test package.
 
 ## Local bench candidate (not flashable or approved)
-The optional local build mode retains three validated compiled images and their
+The optional local build mode retains three validated compiled images, an erased 8 KiB initial OTA selection image, and their
 SHA256 manifest instead of discarding them. It refuses an existing output
 folder and tracked/untracked source changes; CI still exports only evidence.
 With the pinned build dependencies already installed and checked out:
@@ -144,8 +144,7 @@ With the pinned build dependencies already installed and checked out:
 
 The first command builds the game and creates a private local candidate folder;
 the second verifies its files offline. Neither writes to a device. This is not a
-complete image or installer: OTA selection data and a reviewed write plan are
-not included. See BENCH_TEST.md for the hardware acceptance checklist.
+complete image or installer: the initial OTA selection is all 0xff and defaults to ota_0 under the documented ESP-IDF boot rules; a reviewed write plan is not included. See BENCH_TEST.md for the hardware acceptance checklist.
 
 ## Same-device read-only preflight
 After obtaining the original factory archive, connect the same unit in
