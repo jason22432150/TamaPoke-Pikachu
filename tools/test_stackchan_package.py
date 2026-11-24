@@ -18,6 +18,11 @@ class PackageTests(unittest.TestCase):
             self.assertFalse(m["flash_authorized"])
             self.assertFalse(m["factory_compatible"])
             with self.assertRaises(FileExistsError):package(bins,out,"a"*40)
+            ota=out/"ota_data_initial.bin"
+            self.assertEqual(ota.read_bytes(),b"\xff"*8192)
+            ota.write_bytes(b"\0"+b"\xff"*8191)
+            with self.assertRaises(ValueError):verify_package(out)
+            ota.write_bytes(b"\xff"*8192)
             extra=out/"unexpected.bin";extra.write_bytes(b"x")
             with self.assertRaises(ValueError):verify_package(out)
             extra.unlink()
