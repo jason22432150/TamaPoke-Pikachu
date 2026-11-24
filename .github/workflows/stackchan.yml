@@ -42,6 +42,7 @@ jobs:
       - run: python3 tools/test_stackchan_efuse_policy.py
       - run: python3 tools/test_stackchan_efuse.py
       - run: python3 tools/test_stackchan_deploy_review.py
+      - run: python3 tools/test_stackchan_flash.py
       - run: python3 tools/check_stackchan_partitions.py
       - run: python3 tools/generate_embedded.py --check
   diagnostic:
@@ -77,11 +78,16 @@ jobs:
           path: .deps/u8g2
           persist-credentials: false
       - name: Compile full K151 game
-        run: bash tools/build_stackchan_game.sh
+        run: bash tools/build_stackchan_game.sh --ci-candidate "$RUNNER_TEMP/stackchan-alpha-0.1.0"
       - uses: actions/upload-artifact@v4
         with:
           name: stackchan-K151-game-compile-evidence-NOT-FOR-FLASH
-          path: build/stackchan-game-review/manifest.json
+          path: build/stackchan-game-review/*.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stackchan-alpha-0.1.0-NOT-FOR-FLASH
+          path: ${{ runner.temp }}/stackchan-alpha-0.1.0/
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
