@@ -59,9 +59,15 @@ def check_sdkconfig(path):
     settings={}
     for line in path.read_text(encoding="utf-8").splitlines():
         m=re.fullmatch(r"(CONFIG_[A-Z0-9_]+)=(.*)",line)
-        if m:
-            if m[1] in settings:raise ValueError("duplicate SDK setting")
-            settings[m[1]]=m[2]
+        disabled=re.fullmatch(r"# (CONFIG_[A-Z0-9_]+) is not set",line)
+        if m or disabled:
+            key=m[1] if m else disabled[1]
+            value=m[2] if m else "n"
+            # Generated Arduino SDK configuration may repeat identical values.
+            # Never accept conflicting assignments, including explicit unset.
+            if key in settings and settings[key]!=value:
+                raise ValueError("conflicting SDK setting: "+key)
+            settings[key]=value
     if not settings or settings.get("CONFIG_IDF_TARGET")!='"esp32s3"':
         raise ValueError("expected ESP32-S3 SDK configuration")
     for key in FORBIDDEN:
