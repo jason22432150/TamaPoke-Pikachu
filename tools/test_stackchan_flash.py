@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from stackchan_flash import install,serial_prefix,probe,identity,after_boot
 from test_stackchan_efuse import runner as efuse_runner
-from stackchan_deploy_review import plan,check_sdkconfig
+from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory
 from stackchan_package import package
 from test_stackchan_review import image,table
 
@@ -69,6 +69,19 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(prefix[prefix.index("--before")+1],"no-reset")
         self.assertEqual(prefix[prefix.index("--after")+1],"no-reset")
         self.assertNotIn("--force",serial_prefix("/dev/cu.usbmodem1"))
+    def test_efuse_symbol_inventory(self):
+        output="app_main T 40000000 10\nesp_efuse_write_field_bit T 40000010 20\n"
+        output+="esp_efuse_utility_burn_chip_opt.constprop.0 t 40000030 10\n"
+        output+="esp_efuse_read_field_blob T 40000040 10\nets_efuse_program A 40000050\n"
+        output+="esp_efuse_set_read_protect U\nesp_efuse_get_key_dis_write T 40000060 10\n"
+        report=efuse_symbol_inventory(output,"app_main")
+        self.assertEqual(report["linked_code_symbols"],[
+            "esp_efuse_utility_burn_chip_opt.constprop.0","esp_efuse_write_field_bit"])
+        self.assertEqual(report["absolute_symbols"],["ets_efuse_program"])
+        self.assertFalse(report["safety_attested"])
+        self.assertEqual(efuse_symbol_inventory("app_main T 40000000 10","app_main")["linked_code_symbols"],[])
+        with self.assertRaisesRegex(ValueError,"missing entry"):
+            efuse_symbol_inventory("app_main A 40000000","app_main")
     def test_sdk_duplicate_assignments(self):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/"sdkconfig"
