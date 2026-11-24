@@ -121,6 +121,42 @@ jobs:
           name: stackchan-source-bootloader-NOT-FOR-FLASH
           path: ${{ runner.temp }}/stackchan-source-bootloader/
           if-no-files-found: error
+  paired-alpha:
+    runs-on: ubuntu-latest
+    needs: [diagnostic, source-bootloader, waveshare-regression]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: stackchan-alpha-0.1.0-NOT-FOR-FLASH
+          path: ${{ runner.temp }}/arduino-candidate
+      - uses: actions/download-artifact@v4
+        with:
+          name: stackchan-K151-game-compile-evidence-NOT-FOR-FLASH
+          path: ${{ runner.temp }}/arduino-evidence
+      - uses: actions/download-artifact@v4
+        with:
+          name: stackchan-source-bootloader-NOT-FOR-FLASH
+          path: ${{ runner.temp }}/source-bootloader
+      - name: Pair the same-commit source bootloader and application
+        run: |
+          python3 tools/stackchan_package.py combine \
+            --candidate "$RUNNER_TEMP/arduino-candidate" \
+            --source-bootloader "$RUNNER_TEMP/source-bootloader" \
+            --arduino-evidence "$RUNNER_TEMP/arduino-evidence/boot-evidence.json" \
+            --out "$RUNNER_TEMP/paired-alpha" \
+            --report "$RUNNER_TEMP/paired-evidence.json"
+          python3 tools/stackchan_package.py verify --out "$RUNNER_TEMP/paired-alpha"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stackchan-alpha-0.1.0-source-bootloader-NOT-FOR-FLASH
+          path: ${{ runner.temp }}/paired-alpha/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stackchan-alpha-paired-evidence-NOT-FOR-FLASH
+          path: ${{ runner.temp }}/paired-evidence.json
+          if-no-files-found: error
   waveshare-regression:
     runs-on: ubuntu-latest
     steps:
