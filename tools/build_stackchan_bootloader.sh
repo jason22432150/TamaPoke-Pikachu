@@ -26,7 +26,7 @@ PYTHONPATH="$ROOT/tools${PYTHONPATH:+:$PYTHONPATH}" python3 - "$STAGE" "$OUT" "$
 import json, os, re, shutil, sys
 from pathlib import Path
 from stackchan_backup import sha256
-from stackchan_deploy_review import check_sdkconfig, FORBIDDEN
+from stackchan_deploy_review import check_sdkconfig, FORBIDDEN, inspect_efuse_symbols
 from stackchan_review import validate_esp_image
 
 stage,out=map(Path,sys.argv[1:3])
@@ -61,6 +61,7 @@ data=boot.read_bytes()
 if len(data)>0x8000:
     raise SystemExit("Bootloader exceeds 0x8000 boundary")
 validate_esp_image(data)
+symbols=inspect_efuse_symbols("xtensa-esp32s3-elf-nm",elf,"call_start_cpu0")
 os.umask(0o077)
 out.mkdir(mode=0o700,exist_ok=False)
 files={"bootloader.bin":boot,"bootloader.elf":elf,
@@ -70,6 +71,7 @@ for name,src in files.items():
 report=dict(schema=1,kind="source-bootloader-reference",source_commit=sys.argv[4],
             idf_version="6.1.1",idf_commit=sys.argv[3],flash_authorized=False,bootloader_security_attested=False,
             resolved_settings=expected,disabled_security_settings=list(FORBIDDEN+extra),
+            bootloader_efuse_symbols=symbols,
             files={name:sha256(out/name) for name in files},
             warning="Compiled reference only. Arduino application compatibility and full eFuse behavior require review.")
 (out/"manifest.json").write_text(json.dumps(report,indent=2)+"\n")
