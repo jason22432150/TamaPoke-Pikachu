@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 from stackchan_flash import install,serial_prefix,probe,identity,after_boot
 from test_stackchan_efuse import runner as efuse_runner
-from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory,rom_write_references
+from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory,rom_write_references,efuse_mmio_literals
 from stackchan_package import package
 from test_stackchan_review import image,table
 
@@ -129,6 +129,14 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(result["address_literals"],[])
         with self.assertRaisesRegex(ValueError,"empty ELF disassembly"):
             rom_write_references(nm,"",b"")
+    def test_mmio_literals(self):
+        data=b"x"+bytes.fromhex("00700060")+bytes.fromhex("d4710060")+bytes.fromhex("44700060")
+        report=efuse_mmio_literals(data)
+        self.assertEqual(report["register_address_literals"],[
+            dict(address="0x60007000",image_offset=1),
+            dict(address="0x600071d4",image_offset=5)])
+        self.assertFalse(report["safety_attested"])
+        self.assertEqual(efuse_mmio_literals(b"no literal")["register_address_literals"],[])
     def test_sdk_duplicate_assignments(self):
         with tempfile.TemporaryDirectory() as tmp:
             p=Path(tmp)/"sdkconfig"
