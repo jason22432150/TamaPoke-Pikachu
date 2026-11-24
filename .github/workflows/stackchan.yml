@@ -1,29 +1,44 @@
-name: StackChan smoke build
+name: StackChan diagnostic CI
 on:
   push:
+    branches: [stackchan]
+  pull_request:
     branches: [stackchan]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: stackchan-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  build:
+  host:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [run, asan]
     steps:
       - uses: actions/checkout@v4
-      - name: Test game core
-        run: make -C TamaPoke/test CXX=g++ run
-      - name: Test coordinate mapping
-        run: g++ -std=c++11 -Wall -Wextra -Werror boards/stackchan/test_coordinates.cpp -o /tmp/coordinates && /tmp/coordinates
+      - run: make -C TamaPoke/test CXX=g++ ${{ matrix.target }}
+      - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_coordinates.cpp -o /tmp/coordinates && /tmp/coordinates
+      - run: python3 tools/check_stackchan_partitions.py
+      - run: python3 tools/generate_embedded.py --check
+  diagnostic:
+    runs-on: ubuntu-latest
+    needs: host
+    steps:
+      - uses: actions/checkout@v4
       - uses: arduino/setup-arduino-cli@v2
-      - name: Install dependencies
+      - name: Install pinned dependencies
         run: |
+          source boards/stackchan/versions.env
           arduino-cli config init
           arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
-          arduino-cli core install esp32:esp32@3.3.0 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
-          arduino-cli lib install M5Unified
-      - name: Compile isolated smoke firmware
-        run: bash tools/build_stackchan.sh
+          arduino-cli core install "esp32:esp32@$ESP32_VERSION" --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli lib install --no-deps "M5GFX@$M5GFX_VERSION" "M5Unified@$M5UNIFIED_VERSION"
+          arduino-cli lib list
+      - run: bash tools/build_stackchan.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: stackchan-smoke-NOT-game
+          name: stackchan-K151-diagnostic-NOT-FOR-FLASH
           path: build/stackchan-smoke/
+          if-no-files-found: error
