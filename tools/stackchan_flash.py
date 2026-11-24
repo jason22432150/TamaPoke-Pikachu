@@ -58,10 +58,21 @@ def probe(candidate,port,out,runner=run_logged,snapshot=capture):
     run(["read-flash","0x8000",hex(TABLE_BYTES),str(table)],"partitions.log")
     if table.stat().st_size!=TABLE_BYTES:
         raise ValueError("incomplete device partition table")
-    if parse_table(table.read_bytes())!=parse_table((candidate/"TamaPoke.ino.partitions.bin").read_bytes()[:TABLE_BYTES]):
-        raise ValueError("device layout differs; migration is not authorized")
+    actual=parse_table(table.read_bytes())
+    expected=parse_table((candidate/"TamaPoke.ino.partitions.bin").read_bytes()[:TABLE_BYTES])
     if mac_of(run(["read-mac"],"mac-probe-end.txt"))!=baseline["mac"]:
         raise ValueError("different device")
+    if plan(candidate)!=p:
+        raise ValueError("candidate changed during preflight")
+    # Shareable layout-only report: no MAC, key values or raw eFuse contents.
+    report=dict(schema=1,source_commit=p["source_commit"],chip="esp32s3",
+                flash_bytes=p["flash_bytes"],secure_boot="disabled",flash_encryption="disabled",
+                layout_matches=actual==expected,current_partitions=actual,
+                candidate_partitions=expected,flash_authorized=False,efuse_write_allowed=False)
+    with (out/"layout-report.json").open("x",encoding="utf-8") as dst:
+        json.dump(report,dst,indent=2)
+    if actual!=expected:
+        raise ValueError("device layout differs; migration is not authorized; inspect layout-report.json")
     return p,baseline
 
 def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture):
