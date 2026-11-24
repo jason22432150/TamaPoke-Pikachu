@@ -5,9 +5,13 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import re
+import subprocess
+import tempfile
 from stackchan_merge import assemble,SECTOR
 from stackchan_efuse import compare,verify
 from stackchan_package import verify_package
+from stackchan_backup import sha256
 
 def plan(candidate):
     _,report=assemble(candidate)
@@ -47,6 +51,64 @@ def checkpoints(before,after_write,after_boot):
                 after_write=write,after_boot=boot,flash_authorized=False,
                 warning="Snapshot ordering and device boot history require operator evidence.")
 
+FORBIDDEN=("CONFIG_SECURE_BOOT","CONFIG_SECURE_BOOT_V2_ENABLED",
+           "CONFIG_SECURE_FLASH_ENC_ENABLED","CONFIG_BOOTLOADER_APP_ANTI_ROLLBACK",
+           "CONFIG_SECURE_DISABLE_ROM_DL_MODE","CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE")
+
+def check_sdkconfig(path):
+    settings={}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        m=re.fullmatch(r"(CONFIG_[A-Z0-9_]+)=(.*)",line)
+        if m:
+            if m[1] in settings:raise ValueError("duplicate SDK setting")
+            settings[m[1]]=m[2]
+    if not settings or settings.get("CONFIG_IDF_TARGET")!='"esp32s3"':
+        raise ValueError("expected ESP32-S3 SDK configuration")
+    for key in FORBIDDEN:
+        if settings.get(key,"n") not in ("n","0"):
+            raise ValueError("forbidden SDK configuration: "+key)
+    return {k:settings.get(k,"not-defined") for k in FORBIDDEN}
+
+def boot_evidence(properties,build_dir,bins,source_commit):
+    """Reproduce the Arduino platform ELF conversion, not a bootloader safety attestation."""
+    props={}
+    for line in properties.read_text(encoding="utf-8").splitlines():
+        if "=" in line:
+            k,v=line.split("=",1)
+            props[k]=v
+    if props["build.mcu"]!="esp32s3" or props["build.bootloader_addr"]!="0x0":
+        # Arduino may use a longer representation of zero.
+        if props["build.mcu"]!="esp32s3" or int(props["build.bootloader_addr"],0)!=0:
+            raise ValueError("wrong bootloader target")
+    if props["build.flash_size"]!="16MB":raise ValueError("wrong flash size")
+    if Path(props["runtime.platform.path"]).name!="3.3.0":
+        raise ValueError("expected Arduino ESP32 3.3.0")
+    sdk=Path(props["compiler.sdk.path"])
+    variant=Path(props["build.variant.path"])
+    sketch=Path(props["build.source.path"])
+    if (sketch/"bootloader.bin").exists() or (variant/(props["build.custom_bootloader"]+".bin")).exists():
+        raise ValueError("unexpected custom bootloader")
+    elf=sdk/"bin"/("bootloader_"+props["build.boot"]+"_"+props["build.boot_freq"]+".elf")
+    config=sdk/"sdkconfig"
+    if sha256(config)!=sha256(build_dir/"sdkconfig"):
+        raise ValueError("copied SDK configuration differs")
+    settings=check_sdkconfig(config)
+    boot=bins/"TamaPoke.ino.bootloader.bin"
+    with tempfile.TemporaryDirectory() as tmp:
+        image=Path(tmp)/"boot.bin"
+        subprocess.run([str(Path(props["tools.esptool_py.path"])/props["tools.esptool_py.cmd"]),
+                        "--chip","esp32s3","elf2image","--flash-mode",props["build.flash_mode"],
+                        "--flash-freq",props["build.img_freq"],"--flash-size",props["build.flash_size"],
+                        "-o",str(image),str(elf)],check=True)
+        if image.read_bytes()!=boot.read_bytes():
+            raise ValueError("bootloader differs from reproduced ELF conversion")
+    return dict(schema=1,source_commit=source_commit,arduino_core="3.3.0",
+                sdk_config_sha256=sha256(config),bootloader_elf_name=elf.name,
+                bootloader_elf_sha256=sha256(elf),bootloader_bin_sha256=sha256(boot),
+                app_sha256=sha256(bins/"TamaPoke.ino.bin"),sdk_security_settings=settings,
+                elf_conversion_matches=True,bootloader_security_attested=False,
+                flash_authorized=False,warning="SDK config and ELF provenance are not proof of bootloader build configuration or eFuse behavior.")
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     s=p.add_subparsers(dest="action",required=True)
@@ -54,14 +116,20 @@ def main():
     b=s.add_parser("readback");b.add_argument("--candidate",type=Path,required=True);b.add_argument("--readback",type=Path,required=True)
     c=s.add_parser("checkpoints")
     for name in ("before","after-write","after-boot"):c.add_argument("--"+name,type=Path,required=True)
+    d=s.add_parser("boot-evidence")
+    for key in ("properties","build-dir","bins","report"):d.add_argument("--"+key,type=Path,required=True)
+    d.add_argument("--commit",required=True)
     a=p.parse_args()
     try:
         if a.action=="plan":r=plan(a.candidate)
         elif a.action=="readback":r=readback(a.candidate,a.readback)
-        else:r=checkpoints(a.before,a.after_write,a.after_boot)
+        elif a.action=="checkpoints":r=checkpoints(a.before,a.after_write,a.after_boot)
+        else:
+            r=boot_evidence(a.properties,a.build_dir,a.bins,a.commit)
+            with a.report.open("x",encoding="utf-8") as f:json.dump(r,f,indent=2)
         print(json.dumps(r,indent=2))
         return 2 if r.get("status")=="changed" else 0
-    except (OSError,ValueError,KeyError,TypeError) as exc:
+    except (OSError,ValueError,KeyError,TypeError,subprocess.SubprocessError) as exc:
         print(f"ERROR: {exc}",file=sys.stderr);return 1
 
 if __name__=="__main__":sys.exit(main())
