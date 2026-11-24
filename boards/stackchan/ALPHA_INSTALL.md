@@ -53,6 +53,25 @@ the current layout differs from the experimental one. That is expected
 for some factory devices; do not erase or repartition to bypass it.
 Do not share private snapshot data or MAC addresses publicly.
 
+## Source bootloader reference (build only)
+
+The Arduino 3.3.0 candidate continues to use its existing precompiled
+bootloader. A separate CI job now builds an independent ESP-IDF v5.5 reference
+from commit 8c750b088c7cd857d079c0eeb495da199b359461 with explicit defaults and
+checks both resolved sdkconfig and the bootloader's generated header.
+It uses DIO, 80 MHz, 16 MiB, partition table offset 0x8000; secure boot,
+flash encryption, anti-rollback and virtual eFuse modes must remain disabled.
+After installing/activating exactly that ESP-IDF version locally:
+
+    bash tools/build_stackchan_bootloader.sh ~/stackchan-source-bootloader
+
+This only compiles and exports the reference bootloader, ELF, configuration
+and manifest. It does not connect to StackChan or write any flash/eFuse.
+Alternatively download stackchan-source-bootloader-NOT-FOR-FLASH from CI.
+Do not replace the Arduino bootloader in the Alpha package with this image
+yet. Arduino application compatibility, complete eFuse write-path review,
+device partition layout and hardware behavior are not established.
+
 ## Future approved installation (not yet authorized)
 
 Once a separately reviewed build is approved by maintainers, the installer
