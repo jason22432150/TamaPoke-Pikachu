@@ -37,6 +37,8 @@ jobs:
           arduino-cli lib install --no-deps "M5GFX@$M5GFX_VERSION" "M5Unified@$M5UNIFIED_VERSION"
           arduino-cli lib list
       - run: bash tools/build_stackchan.sh
+      - name: Compile original game core against StackChan adapters
+        run: bash tools/build_stackchan_core_probe.sh
       - uses: actions/upload-artifact@v4
         with:
           name: stackchan-K151-diagnostic-NOT-FOR-FLASH

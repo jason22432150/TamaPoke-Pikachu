@@ -15,4 +15,9 @@ require hardware. Library candidate versions are in versions.env; BSP is pinned
 for future use, not yet linked or tested.
 CI runs original game tests and coordinate/partition checks, then builds a
 diagnostic artifact with source commit, target, version and SHA256 metadata.
-The full game is not yet integrated; original Waveshare sources remain untouched.
+A compile-only CoreProbe reuses upstream pet.cpp and i18n, with simple native
+M5Canvas UI, touch, simplified tones, RTC read and opt-in SD directory probe.
+It requires explicit serial START before creating isolated tpk-k151 NVS data.
+RTC is read only and SD is mounted without formatting; no file writes.
+No full game assets, UI parity, body controls or release yet. Original Waveshare
+behavior keeps its tamapoke namespace; the core adds a checked alternate namespace.

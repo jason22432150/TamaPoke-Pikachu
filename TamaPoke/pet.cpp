@@ -2,8 +2,10 @@
 #include "dex.h"
 #include "audio.h"
 
-void Pet::begin() {
-  prefs.begin("tamapoke", false);
+void Pet::begin() { (void)beginWithNamespace("tamapoke"); }
+
+bool Pet::beginWithNamespace(const char *name) {
+  if (!prefs.begin(name, false)) return false;
   if (!prefs.getBool("init", false)) {
     prefs.putBool("init", true);
     newEgg();
@@ -11,6 +13,7 @@ void Pet::begin() {
     load();
   }
   lastTick = millis();
+  return true;
 }
 
 void Pet::selectSpecies(int16_t dex) {

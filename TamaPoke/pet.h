@@ -79,6 +79,7 @@ public:
   uint16_t gameHi = 0;     // record del minijuego (del jugador)
   uint16_t strHi = 0;      // record de golpes al saco
 
+  bool beginWithNamespace(const char *name);  // isolated storage for alternate boards
   void begin();                 // carga estado de NVS (o crea el primer huevo)
   void update(uint32_t nowMs);  // llamar en cada loop()
   void selectSpecies(int16_t dex);  // local console selection, persisted immediately
