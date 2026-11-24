@@ -5,7 +5,7 @@ Status: NOT RUN on hardware. A green CI is not hardware acceptance.
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
 - Capture and verify two full factory reads using stackchan_backup.py. Store privately.
-- Review security, actual partition table and same-device recovery feasibility.
+- Run stackchan_preflight.py capture against the verified original archive; review current security, layout and partition differences, then separately establish same-device recovery feasibility.
 - Independently confirm original calibration values and available recovery method.
 - Verify the candidate manifest, commit, toolchain pins and all hashes.
 - Do not proceed if secure boot/encryption or layout are unresolved.

@@ -146,3 +146,24 @@ The first command builds the game and creates a private local candidate folder;
 the second verifies its files offline. Neither writes to a device. This is not a
 complete image or installer: OTA selection data and a reviewed write plan are
 not included. See BENCH_TEST.md for the hardware acceptance checklist.
+
+## Same-device read-only preflight
+After obtaining the original factory archive, connect the same unit in
+download mode and use a new directory for the current snapshot:
+
+    python3 tools/stackchan_preflight.py capture --factory ~/k151-factory-backup --current ~/k151-current-check --port /dev/cu.usbmodemXXXX
+
+This verifies the original before accessing serial, then repeats the full
+two-read backup and compares MAC, security flags/crypt count, validated
+partition maps and changed 4 KiB sectors per original partition. It never
+writes flash/eFuses, and may leave the unit in download mode. Normal factory
+operation can change NVS sectors. Differences are not proof of corruption.
+Use a new output directory every time; retain the original unchanged.
+
+    python3 tools/stackchan_preflight.py compare --factory ~/k151-factory-backup --current ~/k151-current-check
+
+The second command is offline and compares historical snapshots, not live
+state. Reports omit MAC and raw data but should still remain private. A
+matching MAC is not cryptographic attestation or proof of K151 hardware.
+Both commands always report flash_authorized=false and restore_authorized=false.
+Do not use them as a flashing or recovery authorization.
