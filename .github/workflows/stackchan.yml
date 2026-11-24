@@ -21,6 +21,7 @@ jobs:
       - run: make -C TamaPoke/test CXX=g++ ${{ matrix.target }}
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_coordinates.cpp -o /tmp/coordinates && /tmp/coordinates
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_body_policy.cpp -o /tmp/body_policy && /tmp/body_policy
+      - run: python3 tools/test_stackchan_backup.py
       - run: python3 tools/check_stackchan_partitions.py
       - run: python3 tools/generate_embedded.py --check
   diagnostic:

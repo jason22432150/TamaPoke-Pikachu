@@ -52,3 +52,28 @@ The full game compile requires a clean official BSP checkout at the pinned SHA
 in .deps/stackchan-bsp (or STACKCHAN_BSP_DIR). CI checks out that exact commit.
 Motor movement is deliberately not implemented until real calibration and
 mechanical limits have been checked. No full game binary is published.
+
+## Read-only factory flash archive (before any experimental flash)
+Python 3.11+ and esptool 5.x are required. Use a private local directory outside
+this repository; flash archives can include Wi-Fi credentials and device secrets.
+Disconnect other ESP boards, stop serial monitors, connect K151 via USB and
+enter its documented download mode if automatic reset fails. Do not modify eFuses,
+use --force, or bypass security restrictions. The tool does not write flash or eFuses.
+
+    python3 -m pip install 'esptool>=5,<6'
+    python3 tools/stackchan_backup.py capture --port /dev/cu.usbmodemXXXX --out ~/k151-factory-backup
+    python3 tools/stackchan_backup.py verify --out ~/k151-factory-backup
+
+The first command installs the official serial utility in your Python environment
+(prefer a virtual environment). Replace the port with the actual USB serial port.
+Capture creates a new private directory, records MAC and security/flash reports,
+reads exactly 16 MiB twice, and checks sizes, device identity and SHA256. Verify
+checks local archives without contacting a device. If reads differ or fail, no
+success manifest is created. The chip may remain in the loader until manually
+reset; capture does not resume normal firmware between reads. A valid MD5 table
+at 0x8000 is only a candidate layout, not proof of factory boot configuration.
+The tool does not authorize recovery or flashing. Keep both images and reports
+privately on a separate drive; never commit them. eFuses, external SD, and separate
+controller firmware are not backed up by this tool. Security settings and actual
+partition layout must be reviewed separately, and restoration is device-specific.
+No automated restore command is provided until those facts are established.
