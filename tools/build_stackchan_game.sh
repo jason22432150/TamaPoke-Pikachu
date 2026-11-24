@@ -23,5 +23,13 @@ if [[ -n "$(git -C "$BSP_DIR" status --porcelain)" ]]; then
 fi
 mkdir -p "$SKETCH/src/drivers"
 cp -R "$BSP_DIR/src/drivers/PY32IOExpander" "$SKETCH/src/drivers/"
-arduino-cli compile --warnings all --build-property 'compiler.cpp.extra_flags=-DBOARD_STACKCHAN=1' --fqbn 'esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=enabled,PartitionScheme=app3M_fat9M_16MB' "$SKETCH"
-# Compile gate only. No upload or game artifact before hardware verification.
+BIN="$STAGE/compiled"
+mkdir -p "$BIN"
+arduino-cli compile --output-dir "$BIN" --warnings all --build-property 'compiler.cpp.extra_flags=-DBOARD_STACKCHAN=1' --fqbn 'esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=enabled,PartitionScheme=app3M_fat9M_16MB' "$SKETCH"
+# Validate real compile outputs; publish only evidence, never the binaries.
+REPORT="$ROOT/build/stackchan-game-review"
+mkdir -p "$REPORT"
+rm -f "$REPORT/manifest.json"
+python3 "$ROOT/tools/stackchan_review.py" firmware --bins "$BIN" \
+  --commit "$(git -C "$ROOT" rev-parse HEAD)" --report "$REPORT/manifest.json"
+# The temporary binaries are removed by the existing EXIT trap.

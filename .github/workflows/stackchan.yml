@@ -26,6 +26,7 @@ jobs:
         run: CXXFLAGS="-std=c++17 -O1 -g -Wall -Wextra -Wno-unused-parameter -fno-omit-frame-pointer -DTPK_ENABLE_ZH_TW=1" make -C TamaPoke/test CXX=g++ BUILD=build-zh ${{ matrix.target }}
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_sidebar_policy.cpp -o /tmp/sidebar_policy && /tmp/sidebar_policy
       - run: python3 tools/test_stackchan_backup.py
+      - run: python3 tools/test_stackchan_review.py
       - run: python3 tools/check_stackchan_partitions.py
       - run: python3 tools/generate_embedded.py --check
   diagnostic:
@@ -62,6 +63,11 @@ jobs:
           persist-credentials: false
       - name: Compile full K151 game
         run: bash tools/build_stackchan_game.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stackchan-K151-game-compile-evidence-NOT-FOR-FLASH
+          path: build/stackchan-game-review/manifest.json
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: stackchan-K151-diagnostic-NOT-FOR-FLASH

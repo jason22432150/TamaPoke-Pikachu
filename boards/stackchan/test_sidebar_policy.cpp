@@ -5,7 +5,14 @@ int main(){
   Availability a={true,true,false,false};
   TouchRouter t;
   assert(keyAt({280,4,true})==Key::Feed);
-  assert(keyAt({319,239,true})==Key::None);
+  assert(keyAt({319,239,true})==Key::Settings);
+  assert(keyAt({319,240,true})==Key::None);
+  for(int y=0;y<DISPLAY_H;y++) for(int x=0;x<DISPLAY_W;x++){
+    Key expected=Key::None;
+    if(x>=280)for(int i=0;i<5;i++)
+      if(y>=4+i*48 && y<48+i*48)expected=static_cast<Key>(i+1);
+    assert(keyAt({int16_t(x),int16_t(y),true})==expected);
+  }
   assert(keyAt({280,48,true})==Key::None);
   assert(keyAt({280,52,true})==Key::Play);
   assert(t.update({300,10,true},a,0).wake);

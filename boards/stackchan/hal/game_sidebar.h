@@ -42,7 +42,7 @@ public:
     d.startWrite();
     d.fillRect(0,0,SIDE_W,DISPLAY_H,BG);
     d.fillRect(VIEW_X+VIEW_SIZE,0,SIDE_W,DISPLAY_H,BG);
-    d.setFont(&fonts::Font0);d.setTextSize(1);d.setTextDatum(top_left);
+    d.setFont(&m5gfx::fonts::Font0);d.setTextSize(1);d.setTextDatum(uint8_t(0));
     char buf[12];
     label("BAT",3,5);
     if(s.battery>=0 && s.battery<=100)snprintf(buf,sizeof(buf),"%d%%",s.battery);

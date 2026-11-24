@@ -116,3 +116,19 @@ until release; a side press must end within one second without changing key.
 Host tests cover boundaries, wake-only behavior, state transitions, cross-region
 cancellation and timer rollover. This is a native side-panel extension, not a
 complete redesign of all central screens. Physical usability is unverified.
+
+## Offline recovery review and compile evidence
+After capturing a private factory archive, run:
+
+    python3 tools/stackchan_review.py archive --out ~/k151-factory-backup
+
+This re-verifies hashes, reads captured security reports, compares the actual
+candidate partition map to the experimental layout and lists remaining blockers.
+It does not connect to hardware or authorize a restore, even if all historical
+reports match. No write/erase/eFuse commands are provided.
+The full game build validates application/bootloader image magic and size,
+compiled partition table MD5 and exact expected entries, then generates a
+source-commit-bound SHA256 manifest. CI publishes only that manifest; temporary
+binaries are discarded. Neither this evidence nor the diagnostic artifact is
+permission to flash. Actual device security, layout and recovery still require
+review before preparing an authorized hardware test package.
