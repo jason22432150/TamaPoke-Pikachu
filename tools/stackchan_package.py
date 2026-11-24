@@ -73,8 +73,8 @@ def app_idf_version(data):
     magic,secure=struct.unpack_from("<II",data,32)
     if magic!=0xABCD5432 or secure!=0:
         raise ValueError("invalid application descriptor or nonzero secure version")
-    version=data[144:176].split(b"\\0",1)[0].decode("ascii")
-    if not re.fullmatch(r"v?6\\.1\\.1(?:-[A-Za-z0-9._-]+)?",version):
+    version=data[144:176].split(b"\0",1)[0].decode("ascii")
+    if not re.fullmatch(r"v?6\.1\.1(?:-[A-Za-z0-9._-]+)?",version):
         raise ValueError("application is not based on ESP-IDF v6.1.1")
     return version
 
