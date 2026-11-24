@@ -526,10 +526,7 @@ void loop() {
 #endif
   handleTouch();
   handleSerial();
-#if BOARD_STACKCHAN
-  stackBody.update({pet.sleeping,screenOff,pet.evolving(),pet.showHeart(),pet.eating(),
-      pet.isEgg(),pet.ceremony!=CER_NONE,batPercent(),pet.lowestStat()},millis());
-#endif
+
 #if BOARD_AMOLED_175C
   pollBootButton();
 #endif
@@ -542,12 +539,30 @@ void loop() {
 #endif
 
   updateBrightness(now);
+#if BOARD_STACKCHAN
+  tpkbody::PetState bodyState={pet.sleeping,screenOff,pet.evolving(),pet.showHeart(),
+      pet.eating(),pet.isEgg(),pet.ceremony!=CER_NONE,batPercent(),pet.lowestStat()};
+  stackBody.update(bodyState,millis());
+  static bool previousEgg=pet.isEgg();
+  static uint32_t hatchUntil=0;
+  static bool hatchActive=false;
+  if(previousEgg && !pet.isEgg() && !pet.awaitingStarter()){hatchUntil=millis()+2000;hatchActive=true;}
+  previousEgg=pet.isEgg();
+  if(hatchActive && int32_t(hatchUntil-millis())<=0)hatchActive=false;
+  auto reaction=pet.evolving()?tpkbody::Reaction::Evolve:
+      hatchActive?tpkbody::Reaction::Hatch:
+      pet.eating()?tpkbody::Reaction::Eat:
+      pet.showHeart()?tpkbody::Reaction::Happy:tpkbody::Reaction::None;
+  stackBody.updateMotion(bodyState,galleryOpen||cardOpen||kbOpen||clockOpen||
+      gameOpen||sackOpen||pet.awaitingStarter()||dimStage>0,reaction,millis());
+#endif
 
   // bateria al limite seguro (sin USB): se guarda la partida y se apaga el PMU antes de que la
   // celda baje mas; el RTC conserva la hora
   if (batShouldShutdown() && !usbPresent()) {
     pet.flushSave();
 #if BOARD_STACKCHAN
+    stackBody.stopMotion();
     stackBody.disableRgb();
 #endif
     panel->setBrightness(0);

@@ -3,12 +3,39 @@
 #include <Preferences.h>
 #include "src/drivers/PY32IOExpander/PY32IOExpander.hpp"
 #include "body_policy.h"
+#include "motion_policy.h"
 
 class StackChanBody {
   m5::PY32IOExpander_Class io_;
   bool rgbEnabled_=false;
   tpkbody::Color last_{0,0,0};
   uint32_t lastUpdate_=0;
+  tpkbody::MotionPolicy motion_;
+  bool calibrationValid_=false;
+  tpkbody::MotionSafety safety_{true,true,true,true,false,-1};
+
+  void readCalibration(int& yaw,int& pitch) {
+    Preferences p;
+    yaw=pitch=-1;
+    if(p.begin("servo",true)) {
+      yaw=p.getInt("zero_pos_1",-1);pitch=p.getInt("zero_pos_2",-1);p.end();
+    }
+    calibrationValid_=tpkbody::calibrationPresent(yaw,pitch);
+    safety_.calibrationValid=calibrationValid_;
+  }
+  static void logMotion(tpkbody::MotionCommand c) {
+    if(c.action==tpkbody::Action::Pose)
+      Serial.printf("MOTION PREVIEW yaw=%d pitch=%d speed=%u (NO MOTOR OUTPUT)\n",
+        int(c.pose.yaw),int(c.pose.pitch),unsigned(c.pose.speed));
+    else if(c.action==tpkbody::Action::Stop) Serial.println("MOTION PREVIEW STOP");
+  }
+public:
+  void updateMotion(const tpkbody::PetState& p,bool menu,tpkbody::Reaction r,uint32_t now) {
+    safety_={p.sleeping,p.screenOff,p.ceremony,menu,calibrationValid_,p.batteryPercent};
+    logMotion(motion_.update(now,safety_,r));
+  }
+  void stopMotion(){logMotion(motion_.stop());}
+private:
 
   void show(tpkbody::Color c) {
     // Driver uses RGB565 internally; cap each channel even if future policy changes.
@@ -51,17 +78,23 @@ public:
     if(line=="BODY RGB OFF") {
       disableRgb();Serial.println("DONE RGB disabled");return true;
     }
+    if(line=="BODY MOTION PREVIEW ON") {
+      int yaw,pitch;readCalibration(yaw,pitch);
+      Serial.println(motion_.arm(millis(),safety_)?"DONE preview only; no motor output":"ERR preview unavailable or already enabled");
+      return true;
+    }
+    if(line=="BODY MOTION PREVIEW OFF") {
+      stopMotion();Serial.println("DONE preview disabled");return true;
+    }
     if(line=="BODY CHECK") {
       // Official BSP calibration namespace and signed integer keys.
       // Read only; never create the namespace or synthesize/write default centers.
-      Preferences p;
-      int yaw=-1,pitch=-1;
-      if(p.begin("servo",true)) {
-        yaw=p.getInt("zero_pos_1",-1);pitch=p.getInt("zero_pos_2",-1);p.end();
-      }
-      const bool present=tpkbody::calibrationPresent(yaw,pitch);
+      int yaw,pitch;
+      readCalibration(yaw,pitch);
+      const bool present=calibrationValid_;
       Serial.printf("BODY rgb=%d calibration=%s yaw=%d pitch=%d motor=disabled\n",
           rgbEnabled_,present?"present-unverified":"missing-or-invalid",yaw,pitch);
+      Serial.printf("MOTION preview=%d active=%d hardware=disabled\n",motion_.enabled(),motion_.active());
       Serial.println("DONE");
       return true;
     }

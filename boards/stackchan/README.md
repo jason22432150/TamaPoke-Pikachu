@@ -77,3 +77,16 @@ privately on a separate drive; never commit them. eFuses, external SD, and separ
 controller firmware are not backed up by this tool. Security settings and actual
 partition layout must be reviewed separately, and restoration is device-specific.
 No automated restore command is provided until those facts are established.
+
+## Motion preview (no physical output)
+After START, BODY MOTION PREVIEW ON enables a serial-only preview for up to 60
+seconds if calibration values exist, the game is awake, no menu is open and
+battery is 25-100%. BODY MOTION PREVIEW OFF stops it. BODY CHECK reports preview
+state. Hatch, eat, heart and evolve transitions generate bounded pose requests
+(yaw ±10 degrees, pitch 0–10 degrees, speed <=200), a return to center, and stop.
+A six-second cooldown, stale-loop cancellation, screen-off/low-battery/sleep/menu
+cancellation and rollover-safe timers are covered by host tests. Play is defined
+in the policy for later integration; it is not emitted by the current game hook.
+No actual servo power, UART, torque or motion command is implemented. These
+software limits are not verified mechanical limits. Physical backend must be
+validated against the actual device calibration and travel before any movement.
