@@ -4,12 +4,13 @@ Status: NOT RUN on hardware. A green CI is not hardware acceptance.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
-- Capture and verify two full factory reads using stackchan_backup.py. Store privately.
-- Run stackchan_preflight.py capture against the verified original archive; review current security, layout and partition differences, then separately establish same-device recovery feasibility.
-- Independently confirm original calibration values and available recovery method.
+- Optional: capture and verify two full factory reads using stackchan_backup.py. Store privately. Factory restoration is outside project scope.
+- Review current security and partition layout. If optional archives exist, use stackchan_preflight.py to compare them.
+- Independently confirm original calibration values before enabling motion.
 - Verify the candidate manifest, commit, toolchain pins and all hashes.
 - Do not proceed if secure boot/encryption or layout are unresolved.
-- Candidate includes an erased initial OTA selection image for offline review, but lacks an approved write plan and verified recovery procedure.
+- Candidate includes an erased initial OTA selection image; deployment still requires a reviewed write plan.
+- Never program eFuses, enable secure boot, flash encryption or eFuse anti-rollback. Compare read-only eFuse summaries before and after installation and first boot.
 - No experimental write is authorized by this checklist.
 
 ## After a separately reviewed installation
@@ -34,7 +35,7 @@ Do not include credentials, MAC or private flash images in public issues.
 | Motion | Preview only; no physical motion, calibration unchanged; BODY SERVO PROBE blocks if rail off and reports read-only feedback only if preconditions hold |
 | Persistence | Game state and language survive reboot; original calibration unchanged |
 | Stability | 60-minute normal play with PERF ON; capture paired PERF_TIME/PERF_MEM records, compare active vs idle FPS, min/largest heap, PSRAM and reset reason; PERF OFF afterwards |
-| Recovery | Separately reviewed same-device restoration and factory boot verification |
+| eFuse | Read-only before/after summaries unchanged, including after first boot |
 
 Stop on abnormal heat, unintended motion, power faults, resets or display corruption.
 Do not deliberately discharge a lithium battery below safe limits to test shutdown.
