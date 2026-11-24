@@ -16,3 +16,7 @@ firmware-full-*.bin
 install.log
 *restore-key*.json
 *.tar.gz.aesgcm
+
+.deps/
+factory-flash*.bin
+stackchan-candidate*/

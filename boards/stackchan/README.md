@@ -132,3 +132,17 @@ source-commit-bound SHA256 manifest. CI publishes only that manifest; temporary
 binaries are discarded. Neither this evidence nor the diagnostic artifact is
 permission to flash. Actual device security, layout and recovery still require
 review before preparing an authorized hardware test package.
+
+## Local bench candidate (not flashable or approved)
+The optional local build mode retains three validated compiled images and their
+SHA256 manifest instead of discarding them. It refuses an existing output
+folder and tracked/untracked source changes; CI still exports only evidence.
+With the pinned build dependencies already installed and checked out:
+
+    bash tools/build_stackchan_game.sh --local-candidate ~/stackchan-candidate
+    python3 tools/stackchan_package.py verify --out ~/stackchan-candidate
+
+The first command builds the game and creates a private local candidate folder;
+the second verifies its files offline. Neither writes to a device. This is not a
+complete image or installer: OTA selection data and a reviewed write plan are
+not included. See BENCH_TEST.md for the hardware acceptance checklist.

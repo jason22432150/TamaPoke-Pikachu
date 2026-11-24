@@ -1,6 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PACKAGE=""
+if [[ $# -ne 0 ]]; then
+  if [[ $# -ne 2 || "$1" != "--local-candidate" || -z "$2" ]]; then
+    echo "Usage: $0 [--local-candidate NEW_DIRECTORY]" >&2; exit 2
+  fi
+  if [[ "${CI:-}" == "true" || "${GITHUB_ACTIONS:-}" == "true" ]]; then
+    echo "Local binary package export disabled in CI" >&2; exit 2
+  fi
+  PACKAGE="$2"
+  if [[ -e "$PACKAGE" || -L "$PACKAGE" ]]; then
+    echo "Candidate output must not exist" >&2; exit 2
+  fi
+  if ! git -C "$ROOT" diff --quiet HEAD --; then
+    echo "Commit tracked changes before creating source-bound candidate" >&2; exit 2
+  fi
+  if [[ -n "$(git -C "$ROOT" ls-files --others --exclude-standard -- TamaPoke boards/stackchan tools)" ]]; then
+    echo "Untracked build source files must be reviewed before packaging" >&2; exit 2
+  fi
+fi
 python3 "$ROOT/tools/check_stackchan_partitions.py"
 python3 "$ROOT/tools/generate_embedded.py" --check
 STAGE="$(mktemp -d)"
@@ -32,4 +51,8 @@ mkdir -p "$REPORT"
 rm -f "$REPORT/manifest.json"
 python3 "$ROOT/tools/stackchan_review.py" firmware --bins "$BIN" \
   --commit "$(git -C "$ROOT" rev-parse HEAD)" --report "$REPORT/manifest.json"
+if [[ -n "$PACKAGE" ]]; then
+  python3 "$ROOT/tools/stackchan_package.py" create --bins "$BIN" \
+    --commit "$(git -C "$ROOT" rev-parse HEAD)" --out "$PACKAGE"
+fi
 # The temporary binaries are removed by the existing EXIT trap.
