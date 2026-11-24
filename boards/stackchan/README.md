@@ -31,3 +31,10 @@ SPI SD with no auto-format, M5Unified RTC/power/speaker APIs. The Waveshare
 sleep GPIO path is excluded. Runtime and all interactions remain unverified;
 no full game artifact is published. Motor/RGB and native widescreen redesign
 are outside this target. Do not flash before factory backup/security/layout review.
+
+The first full K151 game build passed at d60d4a0 (Actions run 45306960321):
+1,588,595 bytes of a 3 MiB app slot. Subsequent changes require new CI.
+The display adapter explicitly sets native RGB565 byte order and samples eight
+rows per transfer with a precomputed coordinate map. Host tests verify display
+sampling and touch mapping agree. CI also compiles the original Waveshare 1.75
+using the dependency versions recorded in evidence/build-manifest.json.

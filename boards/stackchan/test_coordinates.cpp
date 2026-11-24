@@ -1,7 +1,19 @@
 #include "hal/board_hal.h"
 #include <cassert>
 #include <cstdlib>
+static uint16_t frame[GAME_SIZE*GAME_SIZE];
+static uint16_t row[VIEW_SIZE],xMap[VIEW_SIZE];
 int main(){
+  for(int x=0;x<VIEW_SIZE;x++) xMap[x]=logicalAxis(x);
+  for(int y=0;y<GAME_SIZE;y++) for(int x=0;x<GAME_SIZE;x++)
+    frame[y*GAME_SIZE+x]=uint16_t((x*97u+y*311u)^0xF800u);
+  for(int y=0;y<VIEW_SIZE;y++) {
+    scaleGameRow(frame,row,y,xMap);
+    for(int x=0;x<VIEW_SIZE;x++) {
+      auto p=toLogical({int16_t(x+VIEW_X),int16_t(y+VIEW_Y),true});
+      assert(row[x]==frame[p.y*GAME_SIZE+p.x]);
+    }
+  }
   for(int y=0;y<240;y++) for(int x=40;x<280;x++){
     auto q=toLogical({int16_t(x),int16_t(y),true});
     assert(q.valid && q.x>=0 && q.x<466 && q.y>=0 && q.y<466);

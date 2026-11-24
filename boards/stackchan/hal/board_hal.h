@@ -3,11 +3,19 @@
 struct TouchPoint { int16_t x, y; bool pressed; };
 struct LogicalPoint { int16_t x, y; bool valid; };
 constexpr int VIEW_X=40, VIEW_Y=0, VIEW_SIZE=240, GAME_SIZE=466;
+// Shared nearest-neighbour sampling for display and touch.
+constexpr int logicalAxis(int pixel) {
+  return (pixel*(GAME_SIZE-1)+(VIEW_SIZE-1)/2)/(VIEW_SIZE-1);
+}
+inline void scaleGameRow(const uint16_t* frame, uint16_t* out, int y, const uint16_t* xMap) {
+  const uint16_t* src=frame+logicalAxis(y)*GAME_SIZE;
+  for(int x=0;x<VIEW_SIZE;x++) out[x]=src[xMap[x]];
+}
 inline LogicalPoint toLogical(TouchPoint p) {
   if (!p.pressed || p.x<VIEW_X || p.x>=VIEW_X+VIEW_SIZE ||
       p.y<VIEW_Y || p.y>=VIEW_Y+VIEW_SIZE) return {0,0,false};
-  return {int16_t(((p.x-VIEW_X)*(GAME_SIZE-1)+(VIEW_SIZE-1)/2)/(VIEW_SIZE-1)),
-          int16_t(((p.y-VIEW_Y)*(GAME_SIZE-1)+(VIEW_SIZE-1)/2)/(VIEW_SIZE-1)),true};
+  return {int16_t(logicalAxis(p.x-VIEW_X)),
+          int16_t(logicalAxis(p.y-VIEW_Y)),true};
 }
 inline TouchPoint toPhysical(LogicalPoint p) {
   if (!p.valid || p.x<0 || p.x>=GAME_SIZE || p.y<0 || p.y>=GAME_SIZE)

@@ -47,3 +47,17 @@ jobs:
           name: stackchan-K151-diagnostic-NOT-FOR-FLASH
           path: build/stackchan-smoke/
           if-no-files-found: error
+  waveshare-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install original release dependencies
+        run: |
+          source boards/stackchan/versions.env
+          arduino-cli config init
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install "esp32:esp32@$WAVESHARE_ESP32_VERSION" --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli lib install "GFX Library for Arduino@$ARDUINO_GFX_VERSION" "U8g2@$U8G2_VERSION" "SensorLib@$WAVESHARE_SENSORLIB_VERSION" "XPowersLib@$WAVESHARE_XPOWERS_VERSION"
+      - name: Compile original Waveshare firmware
+        run: bash tools/build.sh
