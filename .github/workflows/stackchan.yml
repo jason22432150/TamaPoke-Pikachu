@@ -29,6 +29,7 @@ jobs:
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_servo_coordinates.cpp -o /tmp/servo_coordinates && /tmp/servo_coordinates
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_servo_executor.cpp -o /tmp/servo_executor && /tmp/servo_executor
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_servo_power_session.cpp -o /tmp/servo_power_session && /tmp/servo_power_session
+      - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_sd_upload_policy.cpp -o /tmp/sd_upload && /tmp/sd_upload
       - run: python3 tools/test_stackchan_backup.py
       - run: python3 tools/test_stackchan_review.py
       - run: python3 tools/test_stackchan_package.py

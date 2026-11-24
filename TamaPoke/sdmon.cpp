@@ -5,6 +5,7 @@
 #if BOARD_STACKCHAN
 #include <SPI.h>
 #include <SD.h>
+#include "sd_upload_policy.h"
 static fs::FS &SpriteFS = SD;
 static bool allowSdWrites=false;
 #elif BOARD_AMOLED_175C
@@ -276,11 +277,61 @@ void SdMon::unload() {
 // Usar con tools/send_sd.py
 // ---------------------------------------------------------------------------
 
+#if BOARD_STACKCHAN
+// Keep the legacy PUT/OK/#/DONE wire protocol; only K151 uses this path.
+// Temporary and backup names cannot be uploaded or silently overwritten.
+static void stackChanPut(const String& line) {
+  int sp=line.lastIndexOf(' ');
+  if(sp<=4||!sdReady||!allowSdWrites){Serial.println("ERR");return;}
+  String path=line.substring(4,sp);
+  if(!path.startsWith("/"))path="/"+path;
+  auto kind=tpksd::classify(path.c_str());
+  uint32_t size=0;
+  if(kind==tpksd::Kind::Invalid||!tpksd::parseSize(line.substring(sp+1).c_str(),size)){
+    Serial.println("ERR");return;
+  }
+  String stage=path+".tpk-new", backup=path+".tpk-old";
+  if(SpriteFS.exists(stage)||SpriteFS.exists(backup)){
+    Serial.println("ERR recovery files exist; inspect SD offline");return;
+  }
+  File f=SpriteFS.open(stage,FILE_WRITE);
+  if(!f){Serial.println("ERR");return;}
+  Serial.println("OK");
+  static uint8_t buf[2048];
+  uint32_t remaining=size,crc=0xffffffffu;
+  Serial.setTimeout(5000);
+  while(remaining){
+    size_t want=remaining>sizeof(buf)?sizeof(buf):remaining;
+    size_t n=Serial.readBytes(buf,want);
+    if(!n||f.write(buf,n)!=n)break;
+    crc=tpksd::crc32(crc,buf,n);
+    remaining-=n;Serial.println("#");
+  }
+  f.flush();f.close();Serial.setTimeout(1000);
+  if(remaining){SpriteFS.remove(stage);Serial.println("ERR");return;}
+  File check=SpriteFS.open(stage,FILE_READ);
+  bool ok=check && check.size()==size;
+  uint32_t got=0,readCrc=0xffffffffu;
+  while(ok&&got<size){
+    size_t want=size-got>sizeof(buf)?sizeof(buf):size-got;
+    size_t n=check.read(buf,want);
+    if(n!=want){ok=false;break;}
+    if(!got&&!tpksd::headerOk(kind,buf,n,size)){ok=false;break;}
+    readCrc=tpksd::crc32(readCrc,buf,n);got+=n;
+  }
+  check.close();
+  if(!ok||got!=size||readCrc!=crc){SpriteFS.remove(stage);Serial.println("ERR");return;}
+  auto result=tpksd::replace(SpriteFS,path.c_str(),stage.c_str(),backup.c_str());
+  if(result==tpksd::Commit::Done||result==tpksd::Commit::CleanupRequired)sdDirty=true;
+  if(result==tpksd::Commit::Done)Serial.println("DONE");
+  else Serial.println("ERR replacement incomplete; inspect SD offline");
+}
+#endif
 bool sdSerialCommand(const String &line) {
 #if BOARD_STACKCHAN
   if(line=="SDWRITE ON" && sdReady) { allowSdWrites=SD.exists("/mons") || SD.mkdir("/mons"); Serial.println(allowSdWrites?"DONE":"ERR"); return true; }
   if(line=="SDWRITE OFF") { allowSdWrites=false; Serial.println("DONE"); return true; }
-  if(line.startsWith("PUT ") && !allowSdWrites) { Serial.println("ERR"); return true; }
+  if(line.startsWith("PUT ")) { stackChanPut(line); return true; }
 #endif
   if (line.startsWith("PUT ")) {
     int sp = line.lastIndexOf(' ');

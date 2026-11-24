@@ -235,3 +235,18 @@ emergency stop remains essential. Host fake-I/O tests cover partial activation,
 failed shutdown, stale samples, unsafe initial goal, existing rail ownership,
 voltage-latch request failure and timer rollover. Actual power/torque sequence
 and mechanical behavior remain unverified, and normal firmware cannot invoke it.
+
+## K151 protected SD uploads
+SDWRITE ON remains explicit. PUT now accepts only /mons/001..151.bin, their
+s/p/ps variants, and thumbs.bin; decimal size is checked without overflow.
+The existing file is not removed before receipt. A .tpk-new file is written,
+closed and read back for length, basic format magic and CRC32 equality to the
+received stream. Only then is the old file renamed to .tpk-old and the new
+file renamed into place. If replacement fails, restoration is attempted only
+when the destination is absent; ambiguous failures preserve recovery files.
+This is not atomic across power failure on FAT and CRC is not authentication
+or full sprite-format validation. If either recovery name exists, the next PUT
+refuses to overwrite it. Inspect the SD offline with a separate backup before
+renaming or deleting recovery files. No automatic recovery or format at boot.
+The original PUT/OK/#/DONE protocol and Waveshare implementation are unchanged.
+Host tests exercise path/size validation, CRC, replacement and rollback faults.
