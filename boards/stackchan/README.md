@@ -90,3 +90,16 @@ in the policy for later integration; it is not emitted by the current game hook.
 No actual servo power, UART, torque or motion command is implemented. These
 software limits are not verified mechanical limits. Physical backend must be
 validated against the actual device calibration and travel before any movement.
+
+## Traditional Chinese (TW)
+K151 enables LANG_ZH_TW (appended ID 8; existing language IDs unchanged).
+The settings language pill cycles to TW. All existing translation IDs, medal
+labels and 151 species have Traditional Chinese entries. Original Waveshare
+builds keep the original eight languages by default. The font is generated at
+build time from the pinned U8g2 upstream GNU Unifont BDF (font license and
+copyright are carried in the generated header), selecting all codepoints in
+marked translation blocks plus printable ASCII. Generation fails on missing
+codepoints or a mismatched glyph count. A clean checkout of the pinned source
+at .deps/u8g2 (or U8G2_SOURCE_DIR) is required for the K151 build. CI includes
+localization format/persistence/name checks. Readability and text layout on the
+physical display still require testing. Nickname input remains ASCII.

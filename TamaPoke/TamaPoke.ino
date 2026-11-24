@@ -24,7 +24,12 @@
 #else
 #include "TouchDrvCSTXXX.hpp"
 #endif
-#include <U8g2lib.h>  // fuentes CJK (japones); ver applyLangFont()
+#include "i18n.h"
+#include <U8g2lib.h>
+#if TPK_ENABLE_ZH_TW
+#include "tpk_zh_tw_font.h"
+#endif
+// CJK fonts (see applyLangFont).
 #include <esp_sleep.h>
 #include <driver/gpio.h>
 #include "pin_config.h"
@@ -1428,6 +1433,10 @@ void applyLangFont() {
     gFontAscent = 0;
     return;
   }
+#if TPK_ENABLE_ZH_TW
+  if(gLang == LANG_ZH_TW) gfx->setFont(tpk_zh_tw_font);
+  else
+#endif
   gfx->setFont((gLang == LANG_KO) ? CJK_FONT_KO : CJK_FONT_JA);
   gfx->setUTF8Print(true);     // las cadenas CJK son UTF-8 multibyte
   int16_t x1, y1;
@@ -2090,7 +2099,11 @@ void drawClockBtn(int x, int y, const char *l) {
 #define SND_PILL_W 96
 #define BRI_PILL_X 183          // pildora de brillo, centrada (cicla los niveles al tocar)
 #define BRI_PILL_W 100
-static const char *const LANG_CODES[LANG_COUNT] = { "ES", "EN", "FR", "DE", "IT", "PT", "JA", "KO" };
+static const char *const LANG_CODES[LANG_COUNT] = { "ES", "EN", "FR", "DE", "IT", "PT", "JA", "KO"
+#if TPK_ENABLE_ZH_TW
+  , "TW"
+#endif
+};
 
 // tres barras crecientes (brillo, volumen); las `lit` primeras van rellenas
 static void drawLevelBars(int x, int lit) {

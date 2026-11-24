@@ -11,6 +11,7 @@ cp "$ROOT/TamaPoke/"*.{ino,h,cpp} "$SKETCH/"
 cp "$ROOT/boards/stackchan/hal/"*.h "$SKETCH/"
 cp "$ROOT/boards/stackchan/partitions.csv" "$SKETCH/"
 source "$ROOT/boards/stackchan/versions.env"
+python3 "$ROOT/tools/generate_zh_tw_font.py" --u8g2 "${U8G2_SOURCE_DIR:-$ROOT/.deps/u8g2}" --out "$SKETCH/tpk_zh_tw_font.h"
 BSP_DIR="${STACKCHAN_BSP_DIR:-$ROOT/.deps/stackchan-bsp}"
 if [[ "$(git -C "$BSP_DIR" rev-parse HEAD)" != "$STACKCHAN_BSP_COMMIT" ]]; then
   echo "Official StackChan-BSP checkout at $STACKCHAN_BSP_COMMIT required" >&2

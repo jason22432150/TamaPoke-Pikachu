@@ -3,12 +3,17 @@
 #include "shim/Arduino.h"
 #include "shim/Preferences.h"
 #include "../i18n.h"
+#include "../dex.h"
 #include "../pet.h"  // MED_COUNT
 #include <ctype.h>
 #include <string.h>
 #include <vector>
 
-static const char *LANG_NAME[LANG_COUNT] = { "ES", "EN", "FR", "DE", "IT", "PT", "JA", "KO" };
+static const char *LANG_NAME[LANG_COUNT] = { "ES", "EN", "FR", "DE", "IT", "PT", "JA", "KO"
+#if TPK_ENABLE_ZH_TW
+  , "TW"
+#endif
+};
 
 // extrae la firma de los especificadores de printf de una cadena: "%lud" -> "lu"
 static std::vector<std::string> specs(const char *s) {
@@ -222,3 +227,18 @@ TEST(i18n, setLang_rechaza_valores_fuera_de_rango) {
   CHECK_EQ((int)gLang, (int)LANG_FR);
   gLang = LANG_DEFAULT;
 }
+
+#if TPK_ENABLE_ZH_TW
+TEST(i18n, traditional_chinese_names_and_persistence) {
+  mockNvsReset();
+  setLang(LANG_ZH_TW);
+  CHECK_EQ((int)LANG_ZH_TW, 8);
+  for(int dex=1;dex<=DEX_COUNT;dex++) {
+    CHECK_MSG(dexName(dex) && (unsigned char)dexName(dex)[0]>=0xE0,"missing localized dex name");
+  }
+  CHECK_MSG(strcmp(dexName(25),"皮卡丘")==0,"Pikachu");
+  CHECK_MSG(strcmp(dexName(151),"夢幻")==0,"Mew");
+  gLang=LANG_EN;loadLang();CHECK_EQ((int)gLang,(int)LANG_ZH_TW);
+  gLang=LANG_DEFAULT;
+}
+#endif

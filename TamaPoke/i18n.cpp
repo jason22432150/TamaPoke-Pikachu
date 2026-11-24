@@ -281,6 +281,98 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "스프라이트 없음", "SD 카드에 넣어주세요",
     "길게 눌러 종료",
   },
+#if TPK_ENABLE_ZH_TW
+  // ZH_TW_FONT_BEGIN
+  {
+    "進化中！",
+    "好好吃！",
+    "很喜歡！",
+    "肚子餓了！",
+    "需要洗澡！",
+    "好累...",
+    "好難過...",
+    "有點胖...",
+    "是異色寶可夢！",
+    "很開心",
+    "謝謝你！再見",
+    "離家出走了...",
+    "揮手道別...",
+    "蛋",
+    "傳說的蛋！？",
+    "稀有的蛋！",
+    "輕觸寶可夢蛋...",
+    "動了！",
+    "快孵化了！",
+    "圖鑑 %u/151",
+    "%s%s Lv.%u",
+    "放生%s？",
+    "是",
+    "否",
+    "命中 %u 次",
+    "力量 +%u",
+    "新紀錄！",
+    "最佳：%u",
+    "快速敲擊！",
+    "分數：%u",
+    "好開心！",
+    "+快樂",
+    "設定時間",
+    "時",
+    "分",
+    "向上滑動取消",
+    "語言",
+    "勳章！",
+    "太棒了！",
+    "連續 %u 天！",
+    "連續 %u 最佳 %u",
+    "羈絆",
+    "樹果 ???",
+    "紅色樹果",
+    "藍色樹果",
+    "綠色樹果",
+    "%s 年齡 %lu天",
+    "點名稱可改名",
+    "對戰",
+    "攻擊",
+    "防禦",
+    "速度",
+    "體重",
+    "力量訓練",
+    "勳章 %d/%d",
+    "點擊返回",
+    "名稱：",
+    "點擊返回",
+    "飽食",
+    "快樂",
+    "活力",
+    "清潔",
+    "最佳 %u",
+    "成長進度",
+    "Lv.%u",
+    "%u分後 Lv.%u",
+    "進化",
+    "最終型態",
+    "可以進化了！",
+    "全部需求達40可進化",
+    "再升 %u 級進化",
+    "照顧失誤：%u",
+    "音效開",
+    "音效關",
+    "進化！",
+    "%s有話想說...",
+    "%s覺得被冷落...",
+    "要進化嗎？",
+    "維持型態",
+    "要道別嗎？",
+    "道別",
+    "繼續陪伴",
+    "選擇初始寶可夢",
+    "缺少圖像",
+    "請載入SD卡",
+    "長按離開",
+  },
+  // ZH_TW_FONT_END
+#endif
 };
 
 // Nombres de medalla en sus tres longitudes [idioma][medalla].
@@ -293,6 +385,11 @@ static const char *const MED_NAME[LANG_COUNT][MED_COUNT] = {
   { "Niv.10", "Niv.25", "Niv.50", "BAGA", "SEQ 7", "LACO", "FORMA MAX", "EM FORMA" },
   { "Lv.10", "Lv.25", "Lv.50", "きのみ", "7にち", "なかよし", "さいしゅう", "げんき" },
   { "Lv.10", "Lv.25", "Lv.50", "열매", "연속 7일", "유대", "최고 컨디션", "건강함" },
+#if TPK_ENABLE_ZH_TW
+  // ZH_TW_FONT_BEGIN
+  { "Lv.10", "Lv.25", "Lv.50", "樹果", "連續7天", "羈絆", "最終型態", "健康" },
+  // ZH_TW_FONT_END
+#endif
 };
 static const char *const MED_LBL[LANG_COUNT][MED_COUNT] = {
   { "Nv10", "Nv25", "Nv50", "BAYA", "7DIAS", "VINC", "TOPE", "SANO" },
@@ -303,6 +400,11 @@ static const char *const MED_LBL[LANG_COUNT][MED_COUNT] = {
   { "Niv10", "Niv25", "Niv50", "BAGA", "7DIAS", "LACO", "MAX", "FIT" },
   { "Lv10", "Lv25", "Lv50", "きのみ", "7にち", "なかよし", "しんか", "げんき" },
   { "Lv10", "Lv25", "Lv50", "열매", "7일", "유대", "최고", "건강" },
+#if TPK_ENABLE_ZH_TW
+  // ZH_TW_FONT_BEGIN
+  { "Lv10", "Lv25", "Lv50", "樹果", "7天", "羈絆", "最終", "健康" },
+  // ZH_TW_FONT_END
+#endif
 };
 static const char *const MED_DSC[LANG_COUNT][MED_COUNT] = {
   { "NIVEL 10", "NIVEL 25", "NIVEL 50", "BAYA HALLADA",
@@ -321,6 +423,11 @@ static const char *const MED_DSC[LANG_COUNT][MED_COUNT] = {
     "7にち れんぞく", "なかよし MAX", "さいしゅうしんか", "げんきいっぱい" },
   { "레벨 10", "레벨 25", "레벨 50", "열매 발견",
     "연속 7일", "유대감 최대", "최종 진화", "건강함" },
+#if TPK_ENABLE_ZH_TW
+  // ZH_TW_FONT_BEGIN
+  { "等級10", "等級25", "等級50", "發現樹果", "連續7天", "羈絆最高", "最終進化", "健康滿滿" },
+  // ZH_TW_FONT_END
+#endif
 };
 
 const char *T(StrId id) { return STRINGS[gLang][id]; }

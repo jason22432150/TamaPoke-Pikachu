@@ -1,5 +1,9 @@
 #pragma once
 #include <Arduino.h>
+#include "board.h"
+#ifndef TPK_ENABLE_ZH_TW
+#define TPK_ENABLE_ZH_TW BOARD_STACKCHAN
+#endif
 
 // Idiomas soportados. La fuente 5x7 de Arduino_GFX es una tabla CP437 completa
 // (256 glifos), asi que SI hay acentos, dieresis y enes: van como byte suelto en
@@ -7,9 +11,17 @@
 // con strlen(t)*6 y un caracter de dos bytes descuadraria las etiquetas.
 // No estan en CP437: las mayusculas acentuadas salvo E (\220), ni a~/o~ del portugues.
 enum Lang : uint8_t { LANG_ES = 0, LANG_EN, LANG_FR, LANG_DE, LANG_IT, LANG_PT,
-                     LANG_JA, LANG_KO, LANG_COUNT };
+                     LANG_JA, LANG_KO,
+#if TPK_ENABLE_ZH_TW
+                     LANG_ZH_TW,
+#endif
+                     LANG_COUNT };
 // idiomas que necesitan una fuente U8g2 y texto UTF-8 en vez de la tabla CP437
+#if TPK_ENABLE_ZH_TW
+#define LANG_IS_CJK(l) ((l) == LANG_JA || (l) == LANG_KO || (l) == LANG_ZH_TW)
+#else
 #define LANG_IS_CJK(l) ((l) == LANG_JA || (l) == LANG_KO)
+#endif
 #define LANG_DEFAULT LANG_EN  // idioma por defecto: ingles
 
 extern Lang gLang;  // idioma activo (definido en i18n.cpp)

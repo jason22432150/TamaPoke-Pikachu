@@ -22,6 +22,8 @@ jobs:
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_coordinates.cpp -o /tmp/coordinates && /tmp/coordinates
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_body_policy.cpp -o /tmp/body_policy && /tmp/body_policy
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_motion_policy.cpp -o /tmp/motion_policy && /tmp/motion_policy
+      - name: Test Traditional Chinese localization
+        run: make -C TamaPoke/test CXX=g++ BUILD=build-zh CXXFLAGS="-std=c++17 -O1 -g -Wall -Wextra -Wno-unused-parameter -fno-omit-frame-pointer -DTPK_ENABLE_ZH_TW=1" ${{ matrix.target }}
       - run: python3 tools/test_stackchan_backup.py
       - run: python3 tools/check_stackchan_partitions.py
       - run: python3 tools/generate_embedded.py --check
@@ -49,6 +51,13 @@ jobs:
           repository: m5stack/StackChan-BSP
           ref: f7ed40e6f5d9a1d08440cb926f3a0865b81882f8
           path: .deps/stackchan-bsp
+          persist-credentials: false
+      - name: Fetch pinned U8g2 font source
+        uses: actions/checkout@v4
+        with:
+          repository: olikraus/u8g2
+          ref: 46b7f48bcb7bde787d214352873fba9baeccfb71
+          path: .deps/u8g2
           persist-credentials: false
       - name: Compile full K151 game
         run: bash tools/build_stackchan_game.sh
