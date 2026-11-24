@@ -1,5 +1,6 @@
 #pragma once
 #include "board_hal.h"
+#include "efuse_policy.h"
 #include <M5Unified.h>
 #include <Arduino.h>
 #include <esp_heap_caps.h>
