@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   deploy:
+    # StackChan uses local USB flashing only; never publish this branch.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
