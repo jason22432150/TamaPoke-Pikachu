@@ -74,6 +74,17 @@ def validate_esp_image(data):
     elif len(data)!=end:
         raise ValueError("unexpected ESP image trailing data")
 
+def initial_ota_data():
+    """Blank OTA selection for the experimental layout; never writes a device."""
+    layout=expected_layout()
+    ota=[p for p in layout if p["type"]==1 and p["subtype"]==0]
+    slots=[p for p in layout if p["type"]==0]
+    if len(ota)!=1 or ota[0]["size"]!=0x2000 or ota[0]["offset"]%0x1000:
+        raise ValueError("invalid experimental OTA data layout")
+    if sorted(p["subtype"] for p in slots)!=[16,17]:
+        raise ValueError("expected exactly OTA slots 0 and 1 without factory app")
+    return b"\xff"*ota[0]["size"]
+
 def firmware_evidence(bins,source_commit):
     if not re.fullmatch(r"[0-9a-f]{40}",source_commit):
         raise ValueError("invalid source commit")
