@@ -2,7 +2,9 @@
 This branch is NOT ready to flash. The diagnostic uses a provisional standalone
 16 MiB partition layout, NOT the factory layout. Security state and actual partition map must be checked on the target unit first.
 Full factory backup is optional. Factory firmware restoration is outside project scope.
-There is no upload command, web installer or factory-compatible release.
+StackChan installation is local USB only, using tools/stackchan_flash.py.
+No web installer, browser flashing or Pages deployment is supported for K151.
+The installer is currently gated; no factory-compatible release exists.
 The smoke sketch does not write Preferences, mount/format SD, touch servos,
 or directly program PMIC registers. M5Unified itself initializes board hardware
 and Arduino may initialize NVS at boot; this is not a guarantee of preserving
@@ -320,7 +322,7 @@ This compares two verified historical captures of the same MAC and a validated c
 ## Deployment scope and eFuse invariant
 Factory restoration, restoration testing and restoration instructions are outside project scope. Existing read-only archive tools remain optional. Historical review reports do not authorize writes. No eFuse programming, secure boot provisioning, flash encryption provisioning, eFuse anti-rollback or forced flashing is permitted. Check the actual build configuration and bootloader provenance, and compare read-only eFuse summaries before and after flashing and first boot. A passing compile or static check is not proof that hardware eFuses remain unchanged.
 
-## Alpha 0.1.0 candidate installation
+## Alpha 0.1.0 local USB candidate installation
 See [ALPHA_INSTALL.md](ALPHA_INSTALL.md) for macOS preparation and read-only
 bench preflight. CI now requests a separated candidate artifact explicitly
 labeled NOT-FOR-FLASH. The build re-converts the selected SDK bootloader ELF
