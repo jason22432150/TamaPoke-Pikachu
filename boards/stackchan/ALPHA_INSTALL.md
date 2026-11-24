@@ -55,9 +55,9 @@ Do not share private snapshot data or MAC addresses publicly.
 
 ## Source bootloader reference (build only)
 
-The Arduino 3.3.0 candidate continues to use its existing precompiled
-bootloader. A separate CI job now builds an independent ESP-IDF v6.1 reference
-from commit fff9895c82d744c7237be8847347bdd1b07c6643 with explicit defaults and
+The Arduino 4.0.0 candidate continues to use its existing precompiled
+bootloader. Arduino 4.0.0 is based on ESP-IDF v6.1.1; older applications must not be paired with newer bootloaders (see the official Bootloader Compatibility guide). A separate CI job now builds an independent ESP-IDF v6.1.1 reference
+from commit 051e4c4eb20346e043cdd47bc388fde75ff8af63 with explicit defaults and
 checks both resolved sdkconfig and the bootloader's generated header.
 It uses DIO, 80 MHz, 16 MiB, partition table offset 0x8000; secure boot,
 flash encryption, anti-rollback and virtual eFuse modes must remain disabled.
@@ -95,4 +95,4 @@ disabled. Stop at any unexpected movement, reset, heat, or power fault.
 - https://docs.m5stack.com/en/StackChan/
 - https://docs.espressif.com/projects/esptool/en/latest/esp32s3/
 - https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-guides/bootloader.html
-- https://github.com/espressif/arduino-esp32/blob/3.3.0/platform.txt
+- https://github.com/espressif/arduino-esp32/blob/4.0.0/platform.txt
