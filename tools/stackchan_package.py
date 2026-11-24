@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create/verify a local, unapproved K151 bench candidate. Never accesses serial."""
+"""Create/verify an unapproved K151 bench candidate. Never accesses serial."""
 import argparse
 import json
 import os
@@ -12,8 +12,8 @@ NOTICE = """EXPERIMENTAL K151 BENCH CANDIDATE -- NOT APPROVED FOR FLASH
 This package has three compiled images, not a complete flash image.
 An erased initial OTA selection image is included for offline review only.
 No factory image, installer or restore command is included.
-The partition layout is experimental. Verify the original device backup,
-current security state, actual layout and recovery procedure before any write.
+The partition layout is experimental. Verify current security, actual layout,
+Bootloader safety and exact build approval before any write.
 Passing package verification does not authorize flashing.
 """
 
@@ -42,7 +42,7 @@ def package(bins, out, commit):
 def verify_package(out):
     mpath=out/"manifest.json"
     notice=out/"READ-ME-NOT-FOR-FLASH.txt"
-    if mpath.is_symlink() or notice.is_symlink():
+    if out.is_symlink() or any(p.is_symlink() or not p.is_file() for p in (mpath,notice)):
         raise ValueError("symbolic links not accepted")
     m=json.loads(mpath.read_text(encoding="utf-8"))
     expected=firmware_evidence(out,m["source_commit"])
