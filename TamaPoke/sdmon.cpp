@@ -2,7 +2,12 @@
 #include "pin_config.h"
 #include "embedded_mon.h"
 #include <FS.h>
-#if BOARD_AMOLED_175C
+#if BOARD_STACKCHAN
+#include <SPI.h>
+#include <SD.h>
+static fs::FS &SpriteFS = SD;
+static bool allowSdWrites=false;
+#elif BOARD_AMOLED_175C
 #include <LittleFS.h>
 static fs::FS &SpriteFS = LittleFS;
 #else
@@ -161,7 +166,10 @@ const uint8_t *SdThumbs::get(int16_t dex) const {
 }
 
 bool sdBegin() {
-#if BOARD_AMOLED_175C
+#if BOARD_STACKCHAN
+  SPI.begin(36,35,37,4);
+  sdReady=SD.begin(4,SPI,4000000);
+#elif BOARD_AMOLED_175C
   // Do not auto-format: a failed mount almost always means the LittleFS image
   // has not been flashed yet, and formatting would wipe a later write.
   // Partition label "storage" matches boards/175c/partitions.csv. Mount at "/littlefs"
@@ -269,6 +277,11 @@ void SdMon::unload() {
 // ---------------------------------------------------------------------------
 
 bool sdSerialCommand(const String &line) {
+#if BOARD_STACKCHAN
+  if(line=="SDWRITE ON" && sdReady) { allowSdWrites=SD.exists("/mons") || SD.mkdir("/mons"); Serial.println(allowSdWrites?"DONE":"ERR"); return true; }
+  if(line=="SDWRITE OFF") { allowSdWrites=false; Serial.println("DONE"); return true; }
+  if(line.startsWith("PUT ") && !allowSdWrites) { Serial.println("ERR"); return true; }
+#endif
   if (line.startsWith("PUT ")) {
     int sp = line.lastIndexOf(' ');
     String path = line.substring(4, sp);
@@ -317,7 +330,9 @@ bool sdSerialCommand(const String &line) {
     Serial.println(remaining == 0 ? "DONE" : "ERR");
     return true;
   } else if (line == "SDINFO") {  // diagnostico remoto de "no me reconoce la SD"
-#if BOARD_AMOLED_175C
+#if BOARD_STACKCHAN
+    Serial.printf("total=%llu used=%llu\n",SD.totalBytes(),SD.usedBytes());
+#elif BOARD_AMOLED_175C
     Serial.printf("total=%llu used=%llu\n", (unsigned long long)LittleFS.totalBytes(), (unsigned long long)LittleFS.usedBytes());
 #else
     Serial.printf("total=%llu used=%llu\n", SD_MMC.totalBytes(), SD_MMC.usedBytes());

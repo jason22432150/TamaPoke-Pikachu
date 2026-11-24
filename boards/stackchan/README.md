@@ -21,3 +21,13 @@ It requires explicit serial START before creating isolated tpk-k151 NVS data.
 RTC is read only and SD is mounted without formatting; no file writes.
 No full game assets, UI parity, body controls or release yet. Original Waveshare
 behavior keeps its tamapoke namespace; the core adds a checked alternate namespace.
+
+## Full game compile target (experimental)
+The BOARD_STACKCHAN target compiles the original TamaPoke sketch, sprites, CJK
+fonts, menus, animations and game logic, preserving logical 466x466 coordinates.
+The Arduino_GFX RAM canvas is transmitted through M5GFX to a 240x240 viewport.
+It uses the dedicated tpk-k151-game namespace, opt-in START and SDWRITE ON,
+SPI SD with no auto-format, M5Unified RTC/power/speaker APIs. The Waveshare
+sleep GPIO path is excluded. Runtime and all interactions remain unverified;
+no full game artifact is published. Motor/RGB and native widescreen redesign
+are outside this target. Do not flash before factory backup/security/layout review.

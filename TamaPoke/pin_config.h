@@ -9,6 +9,12 @@
 
 #include "board.h"
 
+#if BOARD_STACKCHAN
+#define LCD_WIDTH 466
+#define LCD_HEIGHT 466
+#define BOARD_NAME "M5Stack StackChan K151"
+#else
+
 #define XPOWERS_CHIP_AXP2101
 
 // Shared: 466x466 CO5300 over QSPI, CST9217 over I2C, ES8311 + amp, AXP2101
@@ -55,3 +61,5 @@
   #define SDMMC_CS   41
   #define BOARD_NAME "ESP32-S3-Touch-AMOLED-1.75"
 #endif
+
+#endif // BOARD_STACKCHAN

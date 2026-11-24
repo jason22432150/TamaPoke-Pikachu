@@ -17,7 +17,12 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "Arduino_GFX_Library.h"
+#include "board.h"
+#if BOARD_STACKCHAN
+#include "game_display.h"
+#else
 #include "TouchDrvCSTXXX.hpp"
+#endif
 #include <U8g2lib.h>  // fuentes CJK (japones); ver applyLangFont()
 #include <esp_sleep.h>
 #include <driver/gpio.h>
@@ -38,6 +43,15 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
+#if BOARD_STACKCHAN
+#define FW_VERSION "1.19-pika-k151-dev"
+static StackChanHAL stackBoard;
+static StackChanCanvas stackCanvas;
+static StackChanPanel stackPanel;
+static StackChanCanvas *gfx=&stackCanvas;
+static StackChanPanel *panel=&stackPanel;
+static bool stackGameReady=false;
+#else
 #define FW_VERSION "1.19-pika"
 
 Arduino_DataBus *bus = new Arduino_ESP32QSPI(
@@ -48,6 +62,7 @@ Arduino_CO5300 *panel = new Arduino_CO5300(
 Arduino_Canvas *gfx = new Arduino_Canvas(LCD_WIDTH, LCD_HEIGHT, panel);
 
 TouchDrvCST92xx touch;
+#endif
 // fuente CJK activa: de momento siempre false, la carga llegara con el
 // soporte de japones/coreano/chino (ver PR #13)
 bool gCjkFont = false;
@@ -352,7 +367,23 @@ void setup() {
   // y nadie lo vacia) -> con timeout 0 los mensajes se descartan
   Serial.setTxTimeoutMs(0);
   Serial.printf("TamaPoke fw v%s (%s)\n", FW_VERSION, BOARD_NAME);
+#if BOARD_STACKCHAN
+  auto status=stackBoard.begin();
+  if(status!=BootStatus::Ok || !gfx->begin()) { Serial.printf("K151 init failed: %u\n",unsigned(status)); return; }
+  // This is a development build, not a factory-compatible firmware.
+  // Explicit consent before accessing the game namespace or SD.
+  M5.Display.setCursor(10,10);
+  M5.Display.println("Experimental K151 game");
+  M5.Display.println("Serial START to initialize");
+  for(;;) {
+    stackBoard.update();
+    if(Serial.available()) { String s=Serial.readStringUntil('\n'); s.trim(); if(s=="START") break; }
+    delay(20);
+  }
+  setenv("TZ","UTC0",1); tzset();
+#endif
   loadLang();  // idioma guardado (ES por defecto)
+#if !BOARD_STACKCHAN
   Wire.begin(IIC_SDA, IIC_SCL);
   // CST9217 (tactil), AXP2101 (PMU) y PCF85063 (RTC) comparten este bus I2C.
   // Red de seguridad para PMU/RTC (SensorLib NO respeta este timeout en el
@@ -368,15 +399,17 @@ void setup() {
   // QSPI a 80MHz (por defecto 40): el flush del framebuffer es el cuello de
   // botella del fps (~56ms a 40MHz). Si el panel mostrara basura, bajar a 40M.
   if (!gfx->begin(80000000)) Serial.println("gfx->begin() fallo");
+#endif
   {  // nivel de brillo guardado (ajustes)
     Preferences p;
-    p.begin("tamapoke", true);
+    p.begin(TPK_NVS_NAMESPACE, true);
     userDim = p.getUChar("bri", 0) % BRIGHT_LEVELS;
     p.end();
   }
   panel->setBrightness(180);
   applyLangFont();  // fuente del idioma guardado (clasica salvo CJK)
 
+#if !BOARD_STACKCHAN
   touch.setPins(TP_RESET, TP_INT);
   bool touchOk = false;
   for (int i = 0; i < 3 && !touchOk; i++) {  // a veces falla al primer intento
@@ -393,7 +426,12 @@ void setup() {
   pinMode(TP_INT, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(TP_INT), touchIsr, FALLING);
 
+#endif
+#if BOARD_STACKCHAN
+  if(!pet.beginWithNamespace(TPK_NVS_NAMESPACE)) { Serial.println("Game NVS unavailable"); return; }
+#else
   pet.begin();
+#endif
   sdBegin();
   thumbs.load();
 
@@ -431,6 +469,9 @@ void setup() {
   if (!trainingCaptureReady) Serial.println("Strength training: touch capture unavailable");
 #endif
   lastInteract = millis();
+#if BOARD_STACKCHAN
+  stackGameReady=true;
+#endif
 }
 
 // carga/descarga el sprite de SD cuando cambia la especie
@@ -454,6 +495,10 @@ void ensureMon() {
 }
 
 void loop() {
+#if BOARD_STACKCHAN
+  if(!stackGameReady) { delay(100); return; }
+  stackBoard.update();
+#endif
   uint32_t now = millis();
   pet.update(now);
 
@@ -618,6 +663,10 @@ void updateBrightness(uint32_t now) {
 // 200 ms: despierta por el temporizador o por un toque (el INT del tactil baja). Con USB no, para
 // no perder el puerto serie de la tarjeta SD: se mira sin cache, por si se acaba de enchufar.
 void idleWait(PowerCtx c) {
+#if BOARD_STACKCHAN
+  // No Waveshare GPIO wake configuration on K151.
+  delay(1);
+#else
   // no sleep during a gesture/radio operation or while QSPI DMA is in flight
   bool locked = screenIsLocked();
   bool controlsBusy = false;
@@ -660,6 +709,7 @@ void idleWait(PowerCtx c) {
     return;
   }
   delay(idleDelayMs(c));
+#endif
 }
 
 // ---------- consola serie (provision de SD + depuracion) ----------
@@ -884,6 +934,16 @@ void handleTouch() {
   // solo tocamos el bus si el chip aviso por INT o si el dedo sigue abajo (hay
   // que detectar el levantamiento). Leer el CST9217 dormido se colgaba ~1s y
   // congelaba el loop entero; SensorLib no respeta el timeout de Wire.
+#if BOARD_STACKCHAN
+  static bool outsideContact=false;
+  const auto physical=stackBoard.touch();
+  const auto point=toLogical(physical);
+  if(!physical.pressed) outsideContact=false;
+  else if(!point.valid) outsideContact=true;
+  if(outsideContact) { wasPressed=false; return; }
+  int16_t x=point.x,y=point.y;
+  bool pressed=point.valid;
+#else
 #if BOARD_AMOLED_175C
   if (!takeTouchIrq() && !wasPressed) return;
 #else
@@ -906,6 +966,7 @@ void handleTouch() {
   if (Wire.endTransmission() != 0) return;  // no responde: se reintenta en 20 ms
   int16_t x, y;
   bool pressed = touch.getPoint(&x, &y, 1) > 0;
+#endif
 #if BOARD_AMOLED_175C
   if (touchNeedsRelease) {
     wasPressed = pressed;
@@ -2124,7 +2185,7 @@ void clockTap(int16_t x, int16_t y) {
     if (x >= BRI_PILL_X && x < BRI_PILL_X + BRI_PILL_W) {  // cicla brillo: alto, medio, bajo
       userDim = (userDim + 1) % BRIGHT_LEVELS;
       Preferences p;
-      p.begin("tamapoke", false);
+      p.begin(TPK_NVS_NAMESPACE, false);
       p.putUChar("bri", userDim);
       p.end();
       sfxPlay(SFX_TAP);

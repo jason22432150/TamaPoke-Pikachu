@@ -12,3 +12,15 @@
 #ifndef BOARD_AMOLED_175C
 #define BOARD_AMOLED_175C 0
 #endif
+
+#ifndef BOARD_STACKCHAN
+#define BOARD_STACKCHAN 0
+#endif
+#if BOARD_STACKCHAN && BOARD_AMOLED_175C
+#error Select exactly one hardware target
+#endif
+#if BOARD_STACKCHAN
+#define TPK_NVS_NAMESPACE "tpk-k151-game"
+#else
+#define TPK_NVS_NAMESPACE "tamapoke"
+#endif

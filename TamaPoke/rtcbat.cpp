@@ -1,3 +1,56 @@
+#include "board.h"
+#if BOARD_STACKCHAN
+#include "rtcbat.h"
+#include "batcurve.h"
+#include <M5Unified.h>
+#include <time.h>
+#include <sys/time.h>
+static BatMonitor monitor;
+static uint32_t poll=2000,last=0;
+static int pct=-1,mv=0;
+static bool charging=false,usb=true;
+bool rtcBegin(){return M5.Rtc.isEnabled();}
+uint32_t rtcEpoch(){
+  m5::rtc_datetime_t t;
+  if(M5.Rtc.isEnabled() && M5.Rtc.getDateTime(&t) &&
+     t.date.year>=2025 && t.date.year<=2099 && t.date.month>=1 && t.date.month<=12 &&
+     t.date.date>=1 && t.date.date<=31 && t.time.hours>=0 && t.time.hours<=23 &&
+     t.time.minutes>=0 && t.time.minutes<=59 && t.time.seconds>=0 && t.time.seconds<=59){
+    tm v={};v.tm_year=t.date.year-1900;v.tm_mon=t.date.month-1;v.tm_mday=t.date.date;
+    v.tm_hour=t.time.hours;v.tm_min=t.time.minutes;v.tm_sec=t.time.seconds;
+    time_t e=mktime(&v);if(e>0)return uint32_t(e);
+  }
+  time_t e=time(nullptr);return e>=1735689600?uint32_t(e):0;
+}
+void rtcSetEpoch(uint32_t e){
+  if(e<1735689600 || e>=4102444800UL)return;
+  time_t t=e;tm v={};gmtime_r(&t,&v);
+  timeval tv={t,0};settimeofday(&tv,nullptr);
+  if(M5.Rtc.isEnabled())M5.Rtc.setDateTime(&v);
+}
+bool batBegin(){return true;}
+void pmuEnablePanel(){}
+void batSetPollMs(uint32_t ms){poll=ms;}
+bool usbPresentNow(){int v=M5.Power.getVBUSVoltage();return v<0 || v>=4000;}
+static void refresh(){
+  uint32_t now=millis();if(last && now-last<poll)return;last=now?now:1;
+  pct=M5.Power.getBatteryLevel();if(pct<0||pct>100)pct=-1;
+  mv=M5.Power.getBatteryVoltage();
+  auto state=M5.Power.isCharging();
+  charging=state==m5::Power_Class::is_charging;
+  usb=usbPresentNow();
+  if(!usb && state==m5::Power_Class::is_discharging && pct>=0 && mv>=2500 && mv<=4500)monitor.sample(mv,now);
+  else monitor.reset();
+}
+int batPercent(){refresh();return pct;}
+int batMillivolts(){refresh();return mv;}
+bool batCharging(){refresh();return charging;}
+bool usbPresent(){refresh();return usb;}
+bool batShouldShutdown(){refresh();return !usb && monitor.shutdownNeeded(millis());}
+void batPowerOff(){if(!usbPresentNow())M5.Power.powerOff();monitor.reset();}
+void pwrSetup(){}
+bool pwrShortPressed(){return (M5.Power.getKeyState()&1)!=0;}
+#else
 #include "batcurve.h"
 #include "rtcbat.h"
 #include "pin_config.h"  // define XPOWERS_CHIP_AXP2101
@@ -171,3 +224,5 @@ bool pwrShortPressed() {
   return hit;
 #endif
 }
+
+#endif

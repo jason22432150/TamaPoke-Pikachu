@@ -1,3 +1,4 @@
+#include "board.h"
 #include "i18n.h"
 #include "pet.h"        // MED_COUNT
 #include <Preferences.h>
@@ -329,7 +330,7 @@ const char *medalDesc(int i)  { return MED_DSC[gLang][i]; }
 
 void loadLang() {
   Preferences p;
-  p.begin("tamapoke", true);  // solo lectura
+  p.begin(TPK_NVS_NAMESPACE, true);  // solo lectura
   uint8_t v = p.getUChar("lang", LANG_DEFAULT);
   p.end();
   gLang = (v < LANG_COUNT) ? (Lang)v : LANG_DEFAULT;
@@ -339,7 +340,7 @@ void setLang(Lang l) {
   if (l >= LANG_COUNT) return;
   gLang = l;
   Preferences p;
-  p.begin("tamapoke", false);
+  p.begin(TPK_NVS_NAMESPACE, false);
   p.putUChar("lang", (uint8_t)l);
   p.end();
 }

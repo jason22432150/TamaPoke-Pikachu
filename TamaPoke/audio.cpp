@@ -1,3 +1,65 @@
+#include "board.h"
+#if BOARD_STACKCHAN
+#include "audio.h"
+#include <M5Unified.h>
+#include <Preferences.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
+#include <atomic>
+struct Note { uint16_t f, ms; };
+
+static const Note N_TAP[]    = {{880, 35}};
+static const Note N_EAT[]    = {{660, 45}, {0, 12}, {660, 45}};
+static const Note N_PLAY[]   = {{784, 45}, {988, 60}};
+static const Note N_HEART[]  = {{1047, 55}, {1319, 90}};
+static const Note N_HATCH[]  = {{523, 80}, {659, 80}, {784, 110}, {1047, 170}};
+static const Note N_EVOLVE[] = {{523, 80}, {659, 80}, {784, 80}, {1047, 90}, {1319, 230}};
+static const Note N_MEDAL[]  = {{784, 70}, {0, 25}, {784, 70}, {0, 25}, {1047, 200}};
+static const Note N_DENY[]   = {{300, 110}, {200, 170}};
+static const Note N_BYE[]    = {{784, 150}, {659, 150}, {523, 280}};
+static const Note N_LEVEL[]  = {{784, 70}, {1047, 130}};
+
+struct SfxDef { const Note *n; uint8_t len; };
+static const SfxDef SFX[SFX_COUNT] = {
+  {N_TAP, 1}, {N_EAT, 3}, {N_PLAY, 2}, {N_HEART, 2}, {N_HATCH, 4},
+  {N_EVOLVE, 5}, {N_MEDAL, 5}, {N_DENY, 2}, {N_BYE, 3}, {N_LEVEL, 2},
+};
+
+
+static QueueHandle_t queue=nullptr;
+static std::atomic<bool> enabled{true},sleeping{false},playing{false};
+static std::atomic<uint8_t> volume{0};
+static void applyVolume(){const uint8_t levels[]={64,32,12};M5.Speaker.setVolume(levels[volume.load()]);}
+static void worker(void*){
+  uint8_t id;
+  while(true) if(xQueueReceive(queue,&id,portMAX_DELAY)==pdTRUE && id<SFX_COUNT && enabled && !sleeping){
+    playing=true;
+    for(uint8_t i=0;i<SFX[id].len && enabled && !sleeping;i++){
+      auto n=SFX[id].n[i];
+      if(n.f) M5.Speaker.tone(n.f,n.ms,0,true);
+      vTaskDelay(pdMS_TO_TICKS(n.ms));
+    }
+    playing=false;
+  }
+}
+void audioBegin(){
+  Preferences p;
+  if(p.begin(TPK_NVS_NAMESPACE,true)){enabled=p.getBool("snd",true);volume=p.getUChar("vol",0)%VOL_LEVELS;p.end();}
+  if(!M5.Speaker.isEnabled()) return;
+  applyVolume();queue=xQueueCreate(8,sizeof(uint8_t));
+  if(queue && xTaskCreate(worker,"tpk-sfx",4096,nullptr,1,nullptr)!=pdPASS){vQueueDelete(queue);queue=nullptr;}
+  sfxPlay(SFX_HATCH);
+}
+void sfxPlay(uint8_t id){if(queue && enabled && !sleeping && id<SFX_COUNT)xQueueSend(queue,&id,0);}
+bool audioBusy(){return playing || (queue && uxQueueMessagesWaiting(queue)>0) || M5.Speaker.isPlaying();}
+void audioSetEnabled(bool on){enabled=on;if(!on){if(queue)xQueueReset(queue);M5.Speaker.stop();}Preferences p;if(p.begin(TPK_NVS_NAMESPACE,false)){p.putBool("snd",on);p.end();}}
+bool audioEnabled(){return enabled;}
+void audioSetVolume(uint8_t v){volume=v%VOL_LEVELS;applyVolume();Preferences p;if(p.begin(TPK_NVS_NAMESPACE,false)){p.putUChar("vol",volume.load());p.end();}}
+uint8_t audioVolume(){return volume;}
+void audioSetSleeping(bool v){if(sleeping.exchange(v)!=v && v){if(queue)xQueueReset(queue);M5.Speaker.stop();}}
+void audioSetIdle(bool){}
+#else
 #include "audio.h"
 #include "pin_config.h"
 #include <Arduino.h>
@@ -229,3 +291,5 @@ void audioSetIdle(bool idle) {
   gIdle = idle;
   updateAmplifierPower();  // tambien cuando vence el mantenimiento de un aviso
 }
+
+#endif
