@@ -36,6 +36,7 @@ jobs:
       - run: python3 tools/test_stackchan_backup.py
       - run: python3 tools/test_stackchan_review.py
       - run: python3 tools/test_stackchan_package.py
+      - run: python3 tools/test_stackchan_merge.py
       - run: python3 tools/test_stackchan_preflight.py
       - run: python3 tools/check_stackchan_partitions.py
       - run: python3 tools/generate_embedded.py --check
