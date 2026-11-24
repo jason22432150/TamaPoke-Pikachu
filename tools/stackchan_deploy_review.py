@@ -75,6 +75,41 @@ def check_sdkconfig(path):
             raise ValueError("forbidden SDK configuration: "+key)
     return {k:settings.get(k,"not-defined") for k in FORBIDDEN}
 
+# Names of SDK provisioning and low-level eFuse programming functions.
+# This is a symbol inventory, not a call-graph or MMIO safety proof.
+EFUSE_WRITER=re.compile(
+    r"^(?:(?:esp_efuse|efuse_hal|efuse_ll|esp_rom_efuse|ets_efuse)_"
+    r"(?:write|burn|program|set_|update_|disable_|enable_|batch_write|"
+    r"utility_(?:burn|write|set_|update_|program|apply))"
+    r"|esp_secure_boot(?:_v[12])?_permanently_enable"
+    r"|esp_flash_encrypt_(?:init|enable|contents))")
+
+def efuse_symbol_inventory(output,entry):
+    code=set();absolute=set();entries=set()
+    for line in output.splitlines():
+        parts=line.split()
+        if len(parts)<3 or len(parts[1])!=1:
+            continue
+        name,kind=parts[:2]
+        if kind in "TtWw":
+            entries.add(name)
+            if EFUSE_WRITER.match(name):code.add(name)
+        elif kind in "Aa" and EFUSE_WRITER.match(name):
+            absolute.add(name)
+    if entry not in entries:
+        raise ValueError("ELF symbol inventory missing entry: "+entry)
+    return dict(linked_code_symbols=sorted(code),absolute_symbols=sorted(absolute),
+                code_symbol_count=len(entries),entry=entry,
+                safety_attested=False,
+                warning="Names alone do not establish reachability or rule out inlined/MMIO/ROM writes.")
+
+def inspect_efuse_symbols(nm,elf,entry):
+    output=subprocess.run([str(nm),"--defined-only","--format=posix",str(elf)],
+                          check=True,capture_output=True,text=True).stdout
+    report=efuse_symbol_inventory(output,entry)
+    report["elf_sha256"]=sha256(elf)
+    return report
+
 def boot_evidence(properties,build_dir,bins,source_commit):
     """Reproduce the Arduino platform ELF conversion, not a bootloader safety attestation."""
     props={}
@@ -100,6 +135,9 @@ def boot_evidence(properties,build_dir,bins,source_commit):
         raise ValueError("copied SDK configuration differs")
     settings=check_sdkconfig(config)
     boot=bins/"TamaPoke.ino.bootloader.bin"
+    nm=Path(props["compiler.path"])/(props["compiler.prefix"]+"nm")
+    app_elf=build_dir/"TamaPoke.ino.elf"
+    app_symbols=inspect_efuse_symbols(nm,app_elf,"app_main")
     with tempfile.TemporaryDirectory() as tmp:
         image=Path(tmp)/"boot.bin"
         subprocess.run([str(Path(props["tools.esptool_py.path"])/props["tools.esptool_py.cmd"]),
@@ -112,6 +150,7 @@ def boot_evidence(properties,build_dir,bins,source_commit):
                 sdk_config_sha256=sha256(config),bootloader_elf_name=elf.name,
                 bootloader_elf_sha256=sha256(elf),bootloader_bin_sha256=sha256(boot),
                 app_sha256=sha256(bins/"TamaPoke.ino.bin"),sdk_security_settings=settings,
+                application_efuse_symbols=app_symbols,
                 elf_conversion_matches=True,bootloader_security_attested=False,
                 flash_authorized=False,warning="SDK config and ELF provenance are not proof of bootloader build configuration or eFuse behavior.")
 
