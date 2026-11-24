@@ -58,7 +58,15 @@ jobs:
           arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core install "esp32:esp32@$ESP32_VERSION" --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli lib install --no-deps "M5GFX@$M5GFX_VERSION" "M5Unified@$M5UNIFIED_VERSION"
-          arduino-cli lib install "GFX Library for Arduino@$ARDUINO_GFX_VERSION" "U8g2@$U8G2_VERSION"
+          arduino-cli lib install "U8g2@$U8G2_VERSION"
+          # StackChan uses the upstream Arduino 4 compatibility fix; keep Waveshare on its released dependency.
+          GFX_DIR="$(arduino-cli config get directories.user)/libraries/Arduino_GFX"
+          mkdir -p "$(dirname "$GFX_DIR")"
+          git init "$GFX_DIR"
+          git -C "$GFX_DIR" remote add origin https://github.com/moononournation/Arduino_GFX.git
+          git -C "$GFX_DIR" fetch --depth 1 origin "$STACKCHAN_GFX_COMMIT"
+          git -C "$GFX_DIR" checkout --detach FETCH_HEAD
+          test "$(git -C "$GFX_DIR" rev-parse HEAD)" = "$STACKCHAN_GFX_COMMIT"
           arduino-cli lib list
       - run: bash tools/build_stackchan.sh
       - name: Compile original game core against StackChan adapters
