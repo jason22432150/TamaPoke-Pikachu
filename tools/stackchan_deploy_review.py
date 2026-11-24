@@ -159,6 +159,35 @@ def efuse_mmio_literals(image):
                 safety_attested=False,
                 warning="Literal inventory only; does not distinguish reads from writes or detect computed addresses.")
 
+def mmio_literal_context(image,hits,disassembly):
+    """Map BIN literals to loaded addresses and locate explicit Xtensa literal loads."""
+    segments=[]
+    pos=24
+    for _ in range(image[1]):
+        if pos+8>len(image):
+            raise ValueError("truncated image segment header")
+        address,size=struct.unpack_from("<II",image,pos)
+        pos+=8
+        if pos+size>len(image):
+            raise ValueError("truncated image segment")
+        segments.append((pos,pos+size,address))
+        pos+=size
+    result=[]
+    for hit in hits:
+        offset=hit["image_offset"]
+        matches=[address+offset-start for start,end,address in segments
+                 if start<=offset and offset+4<=end]
+        loads=[]
+        for address in matches:
+            pattern=r"^\s*([0-9a-f]+):\s+l32r\s+[^,]+,\s*(?:0x)?"+format(address,"x")+r"\b"
+            for line in disassembly.splitlines():
+                m=re.match(pattern,line,re.I)
+                if m:
+                    loads.append(dict(instruction_address=m[1],instruction=line.strip()))
+        result.append(dict(**hit,loaded_addresses=[hex(a) for a in matches],
+                           explicit_literal_loads=loads,classification="unresolved"))
+    return result
+
 def inspect_efuse_symbols(nm,elf,entry,image):
     output=subprocess.run([str(nm),"--defined-only","--format=posix",str(elf)],
                           check=True,capture_output=True,text=True).stdout
@@ -169,6 +198,8 @@ def inspect_efuse_symbols(nm,elf,entry,image):
     data=image.read_bytes()
     report["rom_references"]=rom_write_references(output,disassembly,data)
     report["mmio_screen"]=efuse_mmio_literals(data)
+    report["mmio_screen"]["literal_context"]=mmio_literal_context(
+        data,report["mmio_screen"]["register_address_literals"],disassembly)
     report["elf_sha256"]=sha256(elf)
     report["image_sha256"]=sha256(image)
     return report
