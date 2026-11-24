@@ -1,5 +1,7 @@
 # TamaPoke 皮卡丘版
 
+> **StackChan K151 開發分支：僅支援本機 USB 燒錄，不提供網頁刷機。** 目前 Alpha 尚未核准燒錄，請參閱 [macOS 本機安裝與前置檢查](boards/stackchan/ALPHA_INSTALL.md)。下方原始微雪 Waveshare 1.75 的網站及韌體僅適用於該板型，切勿用於 StackChan。
+
 **拿一塊微雪開發板，用 USB 和瀏覽器就能刷入，接著開始照顧皮卡丘。**
 
 ## 新手從這裡開始
