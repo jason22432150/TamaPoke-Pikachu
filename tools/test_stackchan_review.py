@@ -4,8 +4,20 @@ import struct
 import tempfile
 import unittest
 from stackchan_backup import TABLE_BYTES,capture
-from stackchan_review import expected_layout,firmware_evidence,review_archive,security_state
+from stackchan_review import expected_layout,firmware_evidence,review_archive,security_state,validate_esp_image
 from test_stackchan_backup import BackupTests
+
+def image(payload=b"abcd", digest=True):
+    header=bytearray(24)
+    header[0]=0xe9
+    header[1]=1
+    struct.pack_into("<H",header,12,9)
+    header[23]=int(digest)
+    raw=bytes(header)+struct.pack("<II",0x40370000,len(payload))+payload
+    checksum=0xef
+    for v in payload:checksum^=v
+    raw=raw.ljust(((len(raw)+16)&~15)-1,b"\0")+bytes([checksum])
+    return raw+hashlib.sha256(raw).digest() if digest else raw
 
 def table():
     raw=b"".join(struct.pack("<HBBII16sI",0x50AA,p["type"],p["subtype"],
@@ -34,7 +46,7 @@ class ReviewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             out=Path(tmp)
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
-                (out/name).write_bytes(b"\xe9"+b"\0"*100)
+                (out/name).write_bytes(image())
             part=out/"TamaPoke.ino.partitions.bin"
             part.write_bytes(table().ljust(0x1000,b"\xff"))
             self.assertEqual(len(firmware_evidence(out,"a"*40)["files"]),3)
@@ -43,21 +55,34 @@ class ReviewTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     firmware_evidence(out,"a"*40)
 
+    def test_esp_image_validation(self):
+        good=image()
+        validate_esp_image(good)
+        validate_esp_image(image(digest=False))
+        for offset in (0,1,12,23,28,32,len(good)-33,len(good)-1):
+            bad=bytearray(good)
+            bad[offset]^=0xff
+            with self.assertRaises(ValueError):
+                validate_esp_image(bytes(bad))
+        for bad in (good[:-1],good+b"x",b"\xe9"):
+            with self.assertRaises(ValueError):
+                validate_esp_image(bad)
+
     def test_firmware(self):
         with tempfile.TemporaryDirectory() as tmp:
             out=Path(tmp)
             app=out/"TamaPoke.ino.bin"
             boot=out/"TamaPoke.ino.bootloader.bin"
             part=out/"TamaPoke.ino.partitions.bin"
-            app.write_bytes(b"\xe9"+b"\0"*100)
-            boot.write_bytes(b"\xe9"+b"\0"*100)
+            app.write_bytes(image())
+            boot.write_bytes(image())
             part.write_bytes(table())
             r=firmware_evidence(out,"a"*40)
             self.assertFalse(r["flash_authorized"])
             self.assertEqual(len(r["files"]),3)
             app.write_bytes(b"\0")
             with self.assertRaises(ValueError):firmware_evidence(out,"a"*40)
-            app.write_bytes(b"\xe9")
+            app.write_bytes(image())
             part.write_bytes(b"\xff"*TABLE_BYTES)
             with self.assertRaises(ValueError):firmware_evidence(out,"a"*40)
 
