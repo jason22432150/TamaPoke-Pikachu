@@ -45,6 +45,15 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(r["unmatched_time"],1)
         self.assertEqual(r["standalone_mem"],1)
         self.assertEqual(r["sessions"][0]["paired_windows"],0)
+    def test_overlapping_windows_after_gap(self):
+        lines = pair(1,5000)+pair(2,65000)+pair(3,66000)
+        report = analyze(lines,1)
+        self.assertEqual(report["sessions"][0]["coverage_ms"],11000)
+    def test_corrupt_record_breaks_pair(self):
+        a=pair(1,5000)
+        report=analyze([a[0],"PERF_MEM seq=1",a[1]])
+        self.assertEqual(report["unmatched_time"],1)
+        self.assertEqual(report["sessions"][0]["paired_windows"],0)
     def test_invalid(self):
         a=pair(1,5000)
         for line in (a[0]+" seq=1",a[0].replace("fps_milli=10000","fps_milli=1"),
