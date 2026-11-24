@@ -20,6 +20,7 @@
 #include "board.h"
 #if BOARD_STACKCHAN
 #include "game_display.h"
+#include "game_body.h"
 #else
 #include "TouchDrvCSTXXX.hpp"
 #endif
@@ -46,6 +47,7 @@
 #if BOARD_STACKCHAN
 #define FW_VERSION "1.19-pika-k151-dev"
 static StackChanHAL stackBoard;
+static StackChanBody stackBody;
 static StackChanCanvas stackCanvas;
 static StackChanPanel stackPanel;
 static StackChanCanvas *gfx=&stackCanvas;
@@ -524,6 +526,10 @@ void loop() {
 #endif
   handleTouch();
   handleSerial();
+#if BOARD_STACKCHAN
+  stackBody.update({pet.sleeping,screenOff,pet.evolving(),pet.showHeart(),pet.eating(),
+      pet.isEgg(),pet.ceremony!=CER_NONE,batPercent(),pet.lowestStat()},millis());
+#endif
 #if BOARD_AMOLED_175C
   pollBootButton();
 #endif
@@ -541,6 +547,9 @@ void loop() {
   // celda baje mas; el RTC conserva la hora
   if (batShouldShutdown() && !usbPresent()) {
     pet.flushSave();
+#if BOARD_STACKCHAN
+    stackBody.disableRgb();
+#endif
     panel->setBrightness(0);
     batPowerOff();
   }
@@ -726,6 +735,9 @@ void handleSerial() {
                   digitalRead(PWR_SENSE_PIN) == PWR_SENSE_PRESSED ? 1 : 0);
     return;
   }
+#endif
+#if BOARD_STACKCHAN
+  if(stackBody.command(line)) return;
 #endif
   if (sdSerialCommand(line)) return;
 

@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: make -C TamaPoke/test CXX=g++ ${{ matrix.target }}
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_coordinates.cpp -o /tmp/coordinates && /tmp/coordinates
+      - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_body_policy.cpp -o /tmp/body_policy && /tmp/body_policy
       - run: python3 tools/check_stackchan_partitions.py
       - run: python3 tools/generate_embedded.py --check
   diagnostic:
@@ -40,6 +41,13 @@ jobs:
       - run: bash tools/build_stackchan.sh
       - name: Compile original game core against StackChan adapters
         run: bash tools/build_stackchan_core_probe.sh
+      - name: Fetch pinned official StackChan-BSP
+        uses: actions/checkout@v4
+        with:
+          repository: m5stack/StackChan-BSP
+          ref: f7ed40e6f5d9a1d08440cb926f3a0865b81882f8
+          path: .deps/stackchan-bsp
+          persist-credentials: false
       - name: Compile full K151 game
         run: bash tools/build_stackchan_game.sh
       - uses: actions/upload-artifact@v4

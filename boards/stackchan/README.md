@@ -38,3 +38,17 @@ The display adapter explicitly sets native RGB565 byte order and samples eight
 rows per transfer with a precomputed coordinate map. Host tests verify display
 sampling and touch mapping agree. CI also compiles the original Waveshare 1.75
 using the dependency versions recorded in evidence/build-manifest.json.
+
+## Experimental body adapter
+Uses only the official BSP 1.1.0 PY32IOExpander driver at the exact commit in
+versions.env. No full BSP begin(), servo rail enable, servo bus commands, motor
+motion or factory calibration writes. After START, BODY RGB ON opts into low
+brightness RGB game reactions; BODY RGB OFF clears the LEDs and disables the
+feature. Sleeping, screen off, unknown battery or <=10% battery clears LEDs.
+BODY CHECK reads factory servo/zero_pos_1 and zero_pos_2 read-only and reports
+whether calibration is present; it is not proof of safe travel. These commands
+are intended for future supervised bench testing only, not factory firmware.
+The full game compile requires a clean official BSP checkout at the pinned SHA
+in .deps/stackchan-bsp (or STACKCHAN_BSP_DIR). CI checks out that exact commit.
+Motor movement is deliberately not implemented until real calibration and
+mechanical limits have been checked. No full game binary is published.
