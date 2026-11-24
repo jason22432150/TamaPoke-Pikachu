@@ -37,6 +37,8 @@ class FlashTests(unittest.TestCase):
             def serial(args,log):
                 commands.append(args)
                 self.assertNotIn("--force",args)
+                if "--before" in args:
+                    self.assertEqual(args[args.index("--before")+1],"no-reset")
                 if "get-security-info" in args:
                     report="Secure Boot: Disabled\nFlash Encryption: Disabled"
                 elif "flash-id" in args:
@@ -63,7 +65,9 @@ class FlashTests(unittest.TestCase):
     def test_port_rejects_argument_injection(self):
         for port in ("@file","--force","/dev/cu.test @file","/tmp/tty"):
             with self.assertRaises(ValueError):serial_prefix(port)
-        self.assertIn("no-reset",serial_prefix("/dev/cu.usbmodem1"))
+        prefix=serial_prefix("/dev/cu.usbmodem1")
+        self.assertEqual(prefix[prefix.index("--before")+1],"no-reset")
+        self.assertEqual(prefix[prefix.index("--after")+1],"no-reset")
         self.assertNotIn("--force",serial_prefix("/dev/cu.usbmodem1"))
     def test_sdk_security(self):
         with tempfile.TemporaryDirectory() as tmp:
