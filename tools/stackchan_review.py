@@ -60,8 +60,16 @@ def firmware_evidence(bins,source_commit):
         with p.open("rb") as f:
             if f.read(1)!=b"\xe9":
                 raise ValueError("invalid ESP image magic: "+p.name)
+    # ESP-IDF partition binaries may be padded to one 4 KiB sector.
+    # Reject arbitrary trailing data and oversized images rather than silently
+    # validating only the prefix that contains the partition records.
+    if not TABLE_BYTES <= table.stat().st_size <= 0x1000:
+        raise ValueError("invalid compiled partition image size")
     with table.open("rb") as f:
         data=f.read(TABLE_BYTES)
+        padding=f.read()
+    if any(b != 0xff for b in padding):
+        raise ValueError("invalid compiled partition image padding")
     if len(data)!=TABLE_BYTES or parse_table(data)!=expected_layout():
         raise ValueError("compiled partition table does not match experimental CSV")
     return dict(schema=1,kind="compile-evidence-only",board="M5Stack StackChan K151",
