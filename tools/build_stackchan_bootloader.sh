@@ -9,10 +9,10 @@ OUT="$1"
 if [[ -e "$OUT" || -L "$OUT" ]]; then
   echo "Output must not already exist" >&2; exit 2
 fi
-: "${IDF_PATH:?Activate ESP-IDF v6.1 using export.sh first}"
-PIN=fff9895c82d744c7237be8847347bdd1b07c6643
+: "${IDF_PATH:?Activate ESP-IDF v6.1.1 using export.sh first}"
+PIN=051e4c4eb20346e043cdd47bc388fde75ff8af63
 if [[ "$(git -C "$IDF_PATH" rev-parse HEAD)" != "$PIN" ]]; then
-  echo "Expected ESP-IDF v6.1 commit $PIN" >&2; exit 1
+  echo "Expected ESP-IDF v6.1.1 commit $PIN" >&2; exit 1
 fi
 if [[ -n "$(git -C "$IDF_PATH" status --porcelain --untracked-files=no)" ]]; then
   echo "ESP-IDF tracked sources must be clean" >&2; exit 1
@@ -68,7 +68,7 @@ files={"bootloader.bin":boot,"bootloader.elf":elf,
 for name,src in files.items():
     shutil.copyfile(src,out/name)
 report=dict(schema=1,kind="source-bootloader-reference",source_commit=sys.argv[4],
-            idf_version="6.1",idf_commit=sys.argv[3],flash_authorized=False,bootloader_security_attested=False,
+            idf_version="6.1.1",idf_commit=sys.argv[3],flash_authorized=False,bootloader_security_attested=False,
             resolved_settings=expected,disabled_security_settings=list(FORBIDDEN+extra),
             files={name:sha256(out/name) for name in files},
             warning="Compiled reference only. Arduino application compatibility and full eFuse behavior require review.")
