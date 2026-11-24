@@ -19,6 +19,7 @@ Do not include credentials, MAC or private flash images in public issues.
 | Area | Acceptance |
 | --- | --- |
 | Boot | Correct board, 16 MiB flash, 8 MiB PSRAM, 320x240; no reset loop |
+| Calibration | Before START, BODY CALIBRATION reports signed NVS centers without writes or motor output; compare with independently recorded factory values; missing values block motion |
 | START | No game namespace creation until explicit START |
 | LCD | Correct red/green/blue, orientation and full viewport, no tearing |
 | Touch | All four center corners; all five side buttons; crossing cancels; wake-only |
