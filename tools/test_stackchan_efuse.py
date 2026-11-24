@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from stackchan_efuse import capture,verify,compare,REQUIRED
 
-def runner(changed=False,mac="00:11:22:33:44:55",missing=False):
+def runner(changed=False,mac="00:11:22:33:44:55",missing=False,mac_status=" (OK)"):
     def run(args,path):
         if args[-1]=="version":
             report="esptool v5.1.0"
@@ -15,7 +15,7 @@ def runner(changed=False,mac="00:11:22:33:44:55",missing=False):
             assert args[-4:-1]==["--format","json","--file"]
             data={k:dict(name=k,value=0,readable=True,writeable=True,
                          block=0,word=0,pos=0,bit_len=1,efuse_type="uint:1") for k in REQUIRED}
-            data["MAC"]["value"]=mac
+            data["MAC"]["value"]=mac+mac_status
             data["WR_DIS"]["value"]=int(changed)
             if missing:del data["RD_DIS"]
             Path(args[-1]).write_text(json.dumps(data))
@@ -40,6 +40,16 @@ class SnapshotTests(unittest.TestCase):
             with (b/"summary.json").open("a") as f:f.write(" ")
             with self.assertRaises(ValueError):verify(b)
             with self.assertRaises(FileExistsError):capture("fake",a,runner())
+    def test_real_mac_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            self.assertEqual(capture("fake",root/"ok",runner())["mac"],"00:11:22:33:44:55")
+            self.assertEqual(capture("fake",root/"legacy",runner(mac_status=""))["mac"],"00:11:22:33:44:55")
+            for i,status in enumerate((" (Block1 has ERRORS:1 FAIL:True)"," (UNKNOWN)"," extra")):
+                out=root/str(i)
+                with self.assertRaisesRegex(ValueError,"summary MAC"):
+                    capture("fake",out,runner(mac_status=status))
+                self.assertFalse((out/"manifest.json").exists())
     def test_incomplete(self):
         with tempfile.TemporaryDirectory() as tmp:
             out=Path(tmp)/"bad"
