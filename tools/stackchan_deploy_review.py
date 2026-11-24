@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import re
 import subprocess
+import struct
 import tempfile
 from stackchan_merge import assemble,SECTOR
 from stackchan_efuse import compare,verify
@@ -103,11 +104,52 @@ def efuse_symbol_inventory(output,entry):
                 safety_attested=False,
                 warning="Names alone do not establish reachability or rule out inlined/MMIO/ROM writes.")
 
-def inspect_efuse_symbols(nm,elf,entry):
+def rom_write_references(symbols,disassembly,image):
+    """Screen explicit disassembly targets and little-endian ROM address literals."""
+    addresses={}
+    for line in symbols.splitlines():
+        parts=line.split()
+        if len(parts)>=3 and parts[1] in ("A","a") and EFUSE_WRITER.match(parts[0]):
+            addr=int(parts[2],16)
+            if not 0<addr<=0xffffffff:
+                raise ValueError("unexpected ROM symbol address")
+            addresses[parts[0]]=addr
+    hits=[]
+    instructions=0
+    for line in disassembly.splitlines():
+        m=re.match(r"^\s*([0-9a-fA-F]+):\s+(\S.*)$",line)
+        if not m:
+            continue
+        instructions+=1
+        operand=m[2]
+        for name,addr in addresses.items():
+            if (re.search(r"(?<![\w.])"+re.escape(name)+r"(?![\w.])",operand)
+                or re.search(r"(?<![\w])(?:0x)?"+format(addr,"x")+r"(?![\w])",operand,re.I)):
+                hits.append(dict(symbol=name,instruction_address=m[1]))
+    if not instructions:
+        raise ValueError("empty ELF disassembly")
+    literals=[]
+    for name,addr in addresses.items():
+        needle=struct.pack("<I",addr)
+        pos=image.find(needle)
+        while pos!=-1:
+            literals.append(dict(symbol=name,image_offset=pos))
+            pos=image.find(needle,pos+1)
+    return dict(disassembly_instruction_count=instructions,
+                rom_addresses={k:hex(v) for k,v in sorted(addresses.items())},
+                direct_references=hits,address_literals=literals,
+                warning="Potential references only; cannot exclude indirect or computed calls, inlining or direct MMIO.")
+
+def inspect_efuse_symbols(nm,elf,entry,image):
     output=subprocess.run([str(nm),"--defined-only","--format=posix",str(elf)],
                           check=True,capture_output=True,text=True).stdout
     report=efuse_symbol_inventory(output,entry)
+    objdump=Path(nm).with_name(Path(nm).name.removesuffix("nm")+"objdump")
+    disassembly=subprocess.run([str(objdump),"-d","--no-show-raw-insn",str(elf)],
+                                check=True,capture_output=True,text=True).stdout
+    report["rom_references"]=rom_write_references(output,disassembly,image.read_bytes())
     report["elf_sha256"]=sha256(elf)
+    report["image_sha256"]=sha256(image)
     return report
 
 def boot_evidence(properties,build_dir,bins,source_commit):
@@ -137,7 +179,7 @@ def boot_evidence(properties,build_dir,bins,source_commit):
     boot=bins/"TamaPoke.ino.bootloader.bin"
     nm=Path(props["compiler.path"])/(props["compiler.prefix"]+"nm")
     app_elf=build_dir/"TamaPoke.ino.elf"
-    app_symbols=inspect_efuse_symbols(nm,app_elf,"app_main")
+    app_symbols=inspect_efuse_symbols(nm,app_elf,"app_main",bins/"TamaPoke.ino.bin")
     with tempfile.TemporaryDirectory() as tmp:
         image=Path(tmp)/"boot.bin"
         subprocess.run([str(Path(props["tools.esptool_py.path"])/props["tools.esptool_py.cmd"]),
