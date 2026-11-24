@@ -58,15 +58,17 @@ def evidence(out):
                 fields=len(data),unreadable=sum(not x["readable"] for x in data.values()),
                 files={n:sha256(out/n) for n in FILES},flash_authorized=False)
 
-def capture(port,out,runner=run_logged):
+def capture(port,out,runner=run_logged,before="default-reset"):
+    if before not in ("default-reset","no-reset"):
+        raise ValueError("unsupported reset mode")
     out.mkdir(mode=0o700,exist_ok=False)
     base=[sys.executable,"-m","esptool"]
     runner(base+["version"],out/"version.txt")
     if not re.search(r"\bv?5\.1\.0\b",(out/"version.txt").read_text()):
         raise ValueError("esptool 5.1.0 required")
-    mac=base+["--chip","esp32s3","--port",port,"--before","default-reset","--after","no-reset","read-mac"]
+    mac=base+["--chip","esp32s3","--port",port,"--before",before,"--after","no-reset","read-mac"]
     runner(mac,out/"mac-before.txt")
-    runner([sys.executable,"-m","espefuse","--chip","esp32s3","--port",port,
+    runner([sys.executable,"-m","espefuse","--chip","esp32s3","--port",port,"--before",before,
             "summary","--format","json","--file",str(out/"summary.json")],out/"summary.log")
     runner(mac,out/"mac-after.txt")
     m=evidence(out)
