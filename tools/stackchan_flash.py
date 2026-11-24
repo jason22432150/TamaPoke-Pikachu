@@ -31,14 +31,14 @@ def serial_prefix(port):
     if not re.fullmatch(r"/dev/(?:cu\.|tty)[A-Za-z0-9_.-]+",port):
         raise ValueError("explicit macOS/Linux serial device path required")
     return [sys.executable,"-m","esptool","--chip","esp32s3","--port",port,
-            "--baud","115200","--before","default-reset","--after","no-reset"]
+            "--baud","115200","--before","no-reset","--after","no-reset"]
 
 def probe(candidate,port,out,runner=run_logged,snapshot=capture):
     candidate=candidate.resolve();out=out.absolute()
     p=plan(candidate)
     cmd=serial_prefix(port)
     out.mkdir(mode=0o700,exist_ok=False)
-    baseline=snapshot(port,out/"before",runner=runner)
+    baseline=snapshot(port,out/"before",runner=runner,before="no-reset")
     def run(args,name):
         return runner(cmd+args,out/name)
     if mac_of(run(["read-mac"],"mac-probe.txt"))!=baseline["mac"]:
@@ -89,7 +89,7 @@ def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture):
     for i,r in enumerate(p["regions"]):
         run(["read-flash",hex(r["offset"]),hex(r["size"]),str(rb/r["name"])],f"readback-{i}.log")
     readback(staged,rb)
-    snapshot(port,out/"after-write",runner=runner)
+    snapshot(port,out/"after-write",runner=runner,before="no-reset")
     result=compare(out/"before",out/"after-write")
     if result["changed_fields"]:raise ValueError("eFuse changed; stop")
     (out/"write-verified.json").write_text(json.dumps(result,indent=2))
@@ -105,7 +105,7 @@ def after_boot(port,out,runner=run_logged,snapshot=capture):
     verify(out/"before");verify(out/"after-write")
     if compare(out/"before",out/"after-write")["changed_fields"]:
         raise ValueError("eFuse changed before boot")
-    snapshot(port,out/"after-boot",runner=runner)
+    snapshot(port,out/"after-boot",runner=runner,before="no-reset")
     result=checkpoints(out/"before",out/"after-write",out/"after-boot")
     if result["status"]=="changed":raise ValueError("eFuse changed; stop")
     return result
