@@ -78,6 +78,23 @@ def app_idf_version(data):
         raise ValueError("application is not based on ESP-IDF v6.1.1")
     return version
 
+def require_clean_efuse_screen(report,entry,image_sha256,elf_sha256=None):
+    if (report.get("entry")!=entry or report.get("safety_attested") is not False
+        or report.get("image_sha256")!=image_sha256
+        or not re.fullmatch(r"[0-9a-f]{64}",report.get("elf_sha256",""))
+        or (elf_sha256 is not None and report["elf_sha256"]!=elf_sha256)
+        or type(report.get("code_symbol_count")) is not int or report["code_symbol_count"]<=0
+        or report.get("linked_code_symbols")!=[]):
+        raise ValueError("missing or non-clean eFuse symbol screen: "+entry)
+    refs=report.get("rom_references",{})
+    if (type(refs.get("disassembly_instruction_count")) is not int
+        or refs["disassembly_instruction_count"]<=0
+        or refs.get("direct_references")!=[] or refs.get("address_literals")!=[]
+        or not isinstance(refs.get("rom_addresses"),dict)
+        or set(refs["rom_addresses"])!=set(report.get("absolute_symbols",[]))
+        or not {"ets_efuse_program","ets_efuse_write_key","ets_efuse_set_timing"}.issubset(refs["rom_addresses"])):
+        raise ValueError("missing or non-clean eFuse ROM reference screen: "+entry)
+
 def combine(candidate,source_bootloader,arduino_evidence,out):
     """Produce an experimental paired image, never an approved installation."""
     old=verify_package(candidate)
@@ -111,6 +128,10 @@ def combine(candidate,source_bootloader,arduino_evidence,out):
         or arduino.get("app_sha256")!=by_name["TamaPoke.ino.bin"]
         or arduino.get("bootloader_bin_sha256")!=by_name["TamaPoke.ino.bootloader.bin"]):
         raise ValueError("Arduino compile evidence mismatch")
+    require_clean_efuse_screen(source.get("bootloader_efuse_symbols",{}),"call_start_cpu0",
+                               hashes["bootloader.bin"],hashes["bootloader.elf"])
+    require_clean_efuse_screen(arduino.get("application_efuse_symbols",{}),"app_main",
+                               by_name["TamaPoke.ino.bin"])
     new_boot=(source_bootloader/"bootloader.bin").read_bytes()
     app=(candidate/"TamaPoke.ino.bin").read_bytes()
     old_boot=(candidate/"TamaPoke.ino.bootloader.bin").read_bytes()
@@ -135,6 +156,7 @@ def combine(candidate,source_bootloader,arduino_evidence,out):
                 application_idf_version=version,source_bootloader_sha256=hashes["bootloader.bin"],
                 arduino_bootloader_sha256=by_name["TamaPoke.ino.bootloader.bin"],
                 app_sha256=by_name["TamaPoke.ino.bin"],paired_manifest=paired,
+                efuse_static_screen_passed=True,
                 flash_authorized=False,bootloader_security_attested=False,
                 warning="Matching SDK and image headers do not establish runtime compatibility or eFuse safety.")
 
