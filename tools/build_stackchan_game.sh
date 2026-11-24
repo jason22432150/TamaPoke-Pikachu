@@ -3,11 +3,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGE=""
 if [[ $# -ne 0 ]]; then
-  if [[ $# -ne 2 || "$1" != "--local-candidate" || -z "$2" ]]; then
-    echo "Usage: $0 [--local-candidate NEW_DIRECTORY]" >&2; exit 2
+  if [[ $# -ne 2 || ( "$1" != "--local-candidate" && "$1" != "--ci-candidate" ) || -z "$2" ]]; then
+    echo "Usage: $0 [--local-candidate NEW_DIRECTORY | --ci-candidate NEW_DIRECTORY]" >&2; exit 2
   fi
-  if [[ "${CI:-}" == "true" || "${GITHUB_ACTIONS:-}" == "true" ]]; then
-    echo "Local binary package export disabled in CI" >&2; exit 2
+  if [[ "$1" == "--local-candidate" && ( "${CI:-}" == "true" || "${GITHUB_ACTIONS:-}" == "true" ) ]]; then
+    echo "Use explicit CI candidate mode" >&2; exit 2
+  fi
+  if [[ "$1" == "--ci-candidate" && "${GITHUB_ACTIONS:-}" != "true" ]]; then
+    echo "CI candidate mode requires GitHub Actions" >&2; exit 2
   fi
   PACKAGE="$2"
   if [[ -e "$PACKAGE" || -L "$PACKAGE" ]]; then
@@ -46,11 +49,16 @@ cp -R "$BSP_DIR/src/drivers/PY32IOExpander" "$SKETCH/src/drivers/"
 cp -R "$BSP_DIR/src/drivers/FTServo_Arduino" "$SKETCH/src/drivers/"
 BIN="$STAGE/compiled"
 mkdir -p "$BIN"
-arduino-cli compile --output-dir "$BIN" --warnings all --build-property 'compiler.cpp.extra_flags=-DBOARD_STACKCHAN=1' --fqbn 'esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=enabled,PartitionScheme=app3M_fat9M_16MB' "$SKETCH"
+WORK="$STAGE/work"
+ARGS=(--warnings all --build-property 'compiler.cpp.extra_flags=-DBOARD_STACKCHAN=1' --fqbn 'esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=enabled,PartitionScheme=app3M_fat9M_16MB' --build-path "$WORK")
+arduino-cli compile "${ARGS[@]}" --show-properties=expanded "$SKETCH" > "$STAGE/properties.txt"
+arduino-cli compile "${ARGS[@]}" --output-dir "$BIN" "$SKETCH"
 # Validate real compile outputs; publish only evidence, never the binaries.
 REPORT="$ROOT/build/stackchan-game-review"
 mkdir -p "$REPORT"
-rm -f "$REPORT/manifest.json"
+rm -f "$REPORT/manifest.json" "$REPORT/boot-evidence.json"
+python3 "$ROOT/tools/stackchan_deploy_review.py" boot-evidence --properties "$STAGE/properties.txt" \
+  --build-dir "$WORK" --bins "$BIN" --commit "$(git -C "$ROOT" rev-parse HEAD)" --report "$REPORT/boot-evidence.json"
 python3 "$ROOT/tools/stackchan_review.py" firmware --bins "$BIN" \
   --commit "$(git -C "$ROOT" rev-parse HEAD)" --report "$REPORT/manifest.json"
 if [[ -n "$PACKAGE" ]]; then
