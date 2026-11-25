@@ -29,4 +29,19 @@ int main(){
   assert(!toPhysical({466,0,true}).pressed);
   assert(!toPhysical({0,-1,true}).pressed);
   assert(!toPhysical({0,0,false}).pressed);
+  uint16_t homeRow[HOME_W],homeMap[HOME_W];
+  for(int x=0;x<HOME_W;x++)homeMap[x]=homeLogicalX(x);
+  for(int y=0;y<HOME_H;y++){
+    scaleHomeRow(frame,homeRow,y,homeMap);
+    for(int x=0;x<HOME_W;x++){
+      auto q=homeToLogical({int16_t(x),int16_t(HOME_Y+y),true});
+      assert(q.valid && homeRow[x]==frame[q.y*GAME_SIZE+q.x]);
+      if(x>=HOME_X&&x<HOME_X+VIEW_SIZE)assert(q.x==logicalAxis(x-HOME_X));
+    }
+  }
+  assert(!homeToLogical({0,HOME_Y-1,true}).valid);
+  assert(!homeToLogical({0,HOME_BOTTOM,true}).valid);
+  assert(!homeToLogical({-1,HOME_Y,true}).valid);
+  assert(!homeToLogical({HOME_W,HOME_Y,true}).valid);
+  assert(homeToLogical({HOME_W-1,HOME_BOTTOM-1,true}).y<312);
 }

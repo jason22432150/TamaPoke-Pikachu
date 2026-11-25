@@ -107,7 +107,19 @@ at .deps/u8g2 (or U8G2_SOURCE_DIR) is required for the K151 build. CI includes
 localization format/persistence/name checks. Readability and text layout on the
 physical display still require testing. Nickname input remains ASCII.
 
-## Native landscape side panels
+## Landscape home phase B1 (experimental)
+The ordinary hatched-pet home uses top 36px status, a 320x160 scene and
+bottom 44px action bar (Feed, Play, Light, Bath, Info, Dex, Settings).
+The central 240px of the scene retains isotropic legacy sampling; outer scenery
+extends each edge sample. The existing 466x466 framebuffer remains, so this
+is a transitional landscape compositor, not a native-resolution renderer.
+Egg, modal, bath, evolution/farewell prompts, gallery, settings and minigames
+retain compatibility geometry. Display and touch share the geometry; changes
+cancel in-flight gestures. Legacy side panels remain in those screens.
+No partition, NVS format, eFuse, motor, or OTA change. Hardware acceptance and
+candidate approval are outstanding; do not flash this commit automatically.
+
+## Legacy compatibility side panels
 The central 240x240 original game viewport is preserved at x=40..279. The left
 40px strip displays battery, charging, SD availability, level and four needs.
 The right 40px strip provides Feed, Play, Info, Dex and Settings shortcuts

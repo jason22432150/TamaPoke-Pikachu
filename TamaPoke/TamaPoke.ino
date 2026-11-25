@@ -571,8 +571,6 @@ void loop() {
   tpkbody::PetState bodyState={pet.sleeping,screenOff,pet.evolving(),pet.showHeart(),
       pet.eating(),pet.isEgg(),pet.ceremony!=CER_NONE,batPercent(),pet.lowestStat()};
   stackBody.update(bodyState,millis());
-  stackSidebar.update({sidebarAvailability(),batPercent(),batCharging(),sdReady,
-      pet.level(),pet.fullness,pet.joy,pet.energy,pet.hygiene},millis());
   static bool previousEgg=pet.isEgg();
   static uint32_t hatchUntil=0;
   static bool hatchActive=false;
@@ -653,6 +651,11 @@ void loop() {
   if (interval && now - lastRender >= interval) {
     lastRender = now;
 #if BOARD_STACKCHAN
+    // Only the ordinary home uses the first landscape layout; keep all other
+    // screens, modal dialogs and egg/ceremony views in the compatible geometry.
+    const auto available=sidebarAvailability();
+    stackCanvas.setLandscapeHome(available.home && !available.egg &&
+        !pet.wantEvolveButton() && !pet.canRunawayNow() && !pet.wantFarewellButton());
     const bool measure=stackPerf.monitor().enabled();
     const uint32_t started=measure?micros():0;
 #endif
@@ -669,6 +672,8 @@ void loop() {
   // entre frames; 1 ms no se nota en el tactil (se lee cada 20 ms) y el frame no se retrasa
   if (!drewFrame) idleWait(pc);
 #if BOARD_STACKCHAN
+  if(!screenOff)stackSidebar.update({sidebarAvailability(),batPercent(),batCharging(),sdReady,
+      pet.level(),pet.fullness,pet.joy,pet.energy,pet.hygiene},millis(),stackCanvas.landscapePresented());
   stackPerf.tick(screenOff,dimStage>0,gameOpen||sackOpen);
 #endif
 }
@@ -1004,7 +1009,8 @@ void handleTouch() {
   // congelaba el loop entero; SensorLib no respeta el timeout de Wire.
 #if BOARD_STACKCHAN
   const auto physical=stackBoard.touch();
-  auto routed=stackTouchRouter.update(physical,sidebarAvailability(),millis());
+  const bool landscape=stackCanvas.landscapePresented();
+  auto routed=stackTouchRouter.update(physical,sidebarAvailability(),millis(),landscape);
   if(routed.cancel) {wasPressed=false;holdFired=false;swallowGesture=true;}
   if(routed.wake) {screenOff=false;wakeUI();}
   if(!routed.forward) {
@@ -1014,6 +1020,8 @@ void handleTouch() {
       switch(routed.action){
         case Key::Feed:onTap(buttons[0].cx,buttons[0].cy);break;
         case Key::Play:onTap(buttons[1].cx,buttons[1].cy);break;
+        case Key::Light:onTap(buttons[2].cx,buttons[2].cy);break;
+        case Key::Bath:onTap(buttons[3].cx,buttons[3].cy);break;
         case Key::Profile:onSwipeV(-1);break;
         case Key::Dex:onSwipe(-1);break;
         case Key::Settings:onSwipeV(1);break;
@@ -1022,7 +1030,7 @@ void handleTouch() {
     }
     return;
   }
-  const auto point=toLogical(physical);
+  const auto point=landscape?homeToLogical(physical):toLogical(physical);
   int16_t x=point.x,y=point.y;
   bool pressed=point.valid;
 #else
@@ -1669,9 +1677,14 @@ bool render() {
     drawBath();
     drawPoops();
     // panel inferior: base limpia para barras y botones sobre el paisaje
-    gfx->fillRect(0, 312, 466, 154, gNight ? UI_BG_NIGHT : UI_BG_DAY);
-    drawBars();
-    drawButtons();
+#if BOARD_STACKCHAN
+    if (!stackCanvas.landscapeRequested())
+#endif
+    {
+      gfx->fillRect(0, 312, 466, 154, gNight ? UI_BG_NIGHT : UI_BG_DAY);
+      drawBars();
+      drawButtons();
+    }
     drawCelebration();
     if (pet.wantEvolveButton()) drawEvolveButton();        // CTA rojo: evolucionar
     else if (pet.canRunawayNow()) drawRunawayButton();     // CTA sombrio: escapada (abandono)

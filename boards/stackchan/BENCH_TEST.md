@@ -73,14 +73,17 @@ not automatically approved.
    and pre-START after-boot snapshot. Do not overwrite existing checkpoints.
 6. Review all acceptance rows and unresolved failures before tagging Alpha.
 
-## Deferred UI work (owner selected option B)
+## UI work (owner selected option B; explicitly started before remaining Alpha acceptance)
 
-Only after the existing Alpha acceptance, start StackChan-specific rectangular
+The owner requested starting UI work now. Outstanding Alpha tests remain
+unverified; the currently installed candidate is unchanged. Start StackChan-specific rectangular
 320x240 landscape adaptation: top status bar, bottom action bar, aspect-ratio
 preserving pet scene, shared touch/render geometry, followed by settings,
 gallery and minigames. Keep Waveshare circular UI, existing game saves,
 factory Assets and partition table, eFuse policy, physical motor/OTA restrictions.
-No UI implementation or firmware reapproval is part of this acceptance record.
+B1 is transitional: ordinary hatched home with top/bottom controls, isotropic
+central sampling and extended edge scenery. Complex screens keep the previous
+geometry until later phases. No firmware reapproval is part of this change.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.

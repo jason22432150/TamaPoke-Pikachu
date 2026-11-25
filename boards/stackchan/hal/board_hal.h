@@ -23,6 +23,22 @@ inline TouchPoint toPhysical(LogicalPoint p) {
   return {int16_t(VIEW_X+(p.x*(VIEW_SIZE-1)+(GAME_SIZE-1)/2)/(GAME_SIZE-1)),
           int16_t(VIEW_Y+(p.y*(VIEW_SIZE-1)+(GAME_SIZE-1)/2)/(GAME_SIZE-1)),true};
 }
+// Landscape home uses the same isotropic sampling as the compatibility view.
+constexpr int HOME_W=320, HOME_Y=36, HOME_H=160, HOME_BOTTOM=HOME_Y+HOME_H;
+constexpr int HOME_X=(HOME_W-VIEW_SIZE)/2;
+constexpr int homeLogicalX(int x) {
+  return logicalAxis(x<HOME_X?0:x>=HOME_X+VIEW_SIZE?VIEW_SIZE-1:x-HOME_X);
+}
+inline LogicalPoint homeToLogical(TouchPoint p) {
+  if(!p.pressed || p.x<0 || p.x>=HOME_W || p.y<HOME_Y || p.y>=HOME_BOTTOM)
+    return {0,0,false};
+  return {int16_t(homeLogicalX(p.x)),int16_t(logicalAxis(p.y-HOME_Y)),true};
+}
+inline void scaleHomeRow(const uint16_t* frame,uint16_t* out,int y,const uint16_t* xMap) {
+  const uint16_t* src=frame+logicalAxis(y)*GAME_SIZE;
+  // Extend the edge scenery, not the central pet or text. No aspect-ratio stretch.
+  for(int x=0;x<HOME_W;x++)out[x]=src[xMap[x]];
+}
 enum class BootStatus { Ok, Flash, Psram, Board, Display, Touch };
 class BoardHAL {
 public:

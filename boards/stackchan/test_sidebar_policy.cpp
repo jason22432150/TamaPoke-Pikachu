@@ -36,4 +36,30 @@ int main(){
   assert(t.update({300,10,false},a,30).action==Key::Feed);
   assert(t.update({100,100,true},a,100).forward);
   assert(t.update({100,100,false},a,120).forward);
+  for(int y=0;y<DISPLAY_H;y++)for(int x=0;x<DISPLAY_W;x++){
+    Key expected=Key::None;
+    for(int i=0;i<HOME_BUTTON_COUNT;i++)
+      if(x>=HOME_BUTTON_X+i*HOME_BUTTON_STEP&&x<HOME_BUTTON_X+i*HOME_BUTTON_STEP+HOME_BUTTON_W&&
+         y>=HOME_BUTTON_Y&&y<HOME_BUTTON_Y+HOME_BUTTON_H)expected=HOME_KEYS[i];
+    assert(keyAt({int16_t(x),int16_t(y),true},true)==expected);
+  }
+  TouchRouter home;
+  home.update({0,0,false},a,0,true);
+  for(int i=0;i<HOME_BUTTON_COUNT;i++){
+    int16_t x=HOME_BUTTON_X+i*HOME_BUTTON_STEP;
+    assert(home.update({x,210,true},a,100+i*100,true).wake);
+    assert(home.update({x,210,false},a,150+i*100,true).action==HOME_KEYS[i]);
+  }
+  a.sleeping=true;
+  assert(a.allows(Key::Light)&&!a.allows(Key::Bath));
+  a.sleeping=false;
+  assert(home.update({160,100,true},a,1000,true).forward);
+  assert(home.update({160,100,true},a,1020,false).cancel);
+  assert(home.update({160,100,false},a,1040,false).action==Key::None);
+  home.update({0,0,false},a,1060,true);
+  home.update({10,210,true},a,1080,true);
+  assert(home.update({10,210,false},a,1100,false).action==Key::None);
+  home.update({0,0,false},a,1120,true);
+  a.awake=false;assert(home.update({10,210,true},a,1140,true).wake);
+  a.awake=true;assert(home.update({10,210,false},a,1160,true).action==Key::None);
 }

@@ -4,17 +4,22 @@
 #include "perf_policy.h"
 class StackChanCanvas final : public Arduino_Canvas {
   static constexpr int STRIP_ROWS=8;
-  uint16_t strip_[VIEW_SIZE*STRIP_ROWS];
-  uint16_t xMap_[VIEW_SIZE];
+  uint16_t strip_[HOME_W*STRIP_ROWS];
+  uint16_t xMap_[VIEW_SIZE],homeXMap_[HOME_W];
+  bool requestedHome_=false,presentedHome_=false;
   tpkperf::Monitor* perf_=nullptr;
 public:
   StackChanCanvas():Arduino_Canvas(466,466,nullptr){}
+  void setLandscapeHome(bool home){requestedHome_=home;}
+  bool landscapeRequested() const{return requestedHome_;}
+  bool landscapePresented() const{return presentedHome_;}
   void attachPerf(tpkperf::Monitor& monitor){perf_=&monitor;}
   bool begin(int32_t = GFX_NOT_DEFINED) override {
     if(!_framebuffer) _framebuffer=static_cast<uint16_t*>(
       heap_caps_malloc(466UL*466*2,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
     if(!_framebuffer) return false;
     for(int x=0;x<VIEW_SIZE;x++) xMap_[x]=logicalAxis(x);
+    for(int x=0;x<HOME_W;x++)homeXMap_[x]=homeLogicalX(x);
     fillScreen(0); M5.Display.fillScreen(0); return true;
   }
   void flush(bool = false) override {
@@ -26,13 +31,18 @@ public:
     const bool previousSwap=M5.Display.getSwapBytes();
     M5.Display.setSwapBytes(true);
     M5.Display.startWrite();
-    for(int y=0;y<VIEW_SIZE;y+=STRIP_ROWS) {
-      const int rows=(VIEW_SIZE-y<STRIP_ROWS)?VIEW_SIZE-y:STRIP_ROWS;
-      for(int j=0;j<rows;j++)
-        scaleGameRow(_framebuffer,strip_+j*VIEW_SIZE,y+j,xMap_);
+    const bool home=requestedHome_;
+    const int width=home?HOME_W:VIEW_SIZE, height=home?HOME_H:VIEW_SIZE;
+    for(int y=0;y<height;y+=STRIP_ROWS) {
+      const int rows=(height-y<STRIP_ROWS)?height-y:STRIP_ROWS;
+      for(int j=0;j<rows;j++){
+        if(home)scaleHomeRow(_framebuffer,strip_+j*width,y+j,homeXMap_);
+        else scaleGameRow(_framebuffer,strip_+j*width,y+j,xMap_);
+      }
       // Synchronous pushImage, not pushImageDMA: the strip can be reused.
-      M5.Display.pushImage(VIEW_X,VIEW_Y+y,VIEW_SIZE,rows,strip_);
+      M5.Display.pushImage(home?0:VIEW_X,(home?HOME_Y:VIEW_Y)+y,width,rows,strip_);
     }
+    presentedHome_=home;
     M5.Display.endWrite();
     M5.Display.setSwapBytes(previousSwap);
     if(measure)perf_->flushed(micros()-started);
