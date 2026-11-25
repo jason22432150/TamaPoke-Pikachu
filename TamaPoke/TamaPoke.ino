@@ -2752,9 +2752,8 @@ static void stackRenderCard(){
     snprintf(buf,sizeof(buf),T(S_MISTAKES_FMT),pet.careMistakes);
     stackDialogText(buf,12,218,442,2,pet.careMistakes?UI_BAR_BAD:UI_INK);
   }
-  stackNav("BACK",cardPage>0,cardPage<3);
-  char page[12];snprintf(page,sizeof(page),"%u/4",unsigned(cardPage+1));
-  stackDialogText(page,348,12,108,2,UI_TRACK);
+  char page[20];snprintf(page,sizeof(page),"BACK %u/4",unsigned(cardPage+1));
+  stackNav(page,cardPage>0,cardPage<3);
   flushUI();
 }
 #endif
@@ -2895,6 +2894,7 @@ void drawThumb(const uint8_t *b, int x, int y, int s, bool sil) {
 
 void renderGallery() {
 #if BOARD_STACKCHAN
+  {
   if(galleryDetail){
     gfx->fillScreen(UI_BG_DAY);
     bool reg=pet.isRegistered(galleryDetail);
@@ -2922,6 +2922,7 @@ void renderGallery() {
     stackDialogText(num,b.x+42,b.y+13,b.w-42,2,pet.isRegistered(dex)?UI_INK:UI_TRACK);
   }
   stackNav("BACK",galleryPage>0,galleryPage<9);flushUI();return;
+  }
 #endif
   if (galleryDetail) {  // vista detalle: se redibuja siempre (animada)
     gfx->fillScreen(RGB565_BLACK);
