@@ -13,13 +13,36 @@ from stackchan_backup import ARCHIVE, TABLE_BYTES, parse_table, sha256, verify
 ROOT=Path(__file__).resolve().parents[1]
 LAYOUT=ROOT/"boards/stackchan/partitions.csv"
 
-def expected_layout():
+def partition_int(value):
+    value=value.strip()
+    if value[-1:].lower() in ("k","m"):
+        return int(value[:-1],0)*({"k":1024,"m":1024*1024}[value[-1].lower()])
+    return int(value,0)
+
+def resolve_layout(lines):
+    """Resolve the supported K151 CSV subset using ESP-IDF alignment rules."""
     types={"app":0,"data":1}
     subtypes={"nvs":2,"ota":0,"ota_0":16,"ota_1":17,"spiffs":130,"coredump":3,"phy":1}
+    result=[];names=set();end=0x9000
+    for row in csv.reader(line for line in lines if line.strip() and not line.lstrip().startswith("#")):
+        if len(row)!=6:raise ValueError("expected six partition CSV fields")
+        name,t,s,offset,size,flags=(field.strip() for field in row)
+        if (not name or len(name.encode("ascii"))>16 or name in names or flags
+            or t not in types or s not in subtypes
+            or (t=="app")!=(s in ("ota_0","ota_1"))):
+            raise ValueError("unsupported or duplicate K151 partition")
+        alignment=0x10000 if t=="app" else 0x1000
+        start=partition_int(offset) if offset else (end+alignment-1)//alignment*alignment
+        n=partition_int(size)
+        if start<end or start%alignment or n<=0 or n%0x1000 or start+n>0x1000000:
+            raise ValueError("invalid partition bounds or alignment")
+        result.append(dict(label=name,type=types[t],subtype=subtypes[s],offset=start,size=n,flags=0))
+        names.add(name);end=start+n
+    return result
+
+def expected_layout():
     with LAYOUT.open() as f:
-        rows=csv.reader(line for line in f if line.strip() and not line.startswith("#"))
-        return [dict(label=n,type=types[t],subtype=subtypes[s],offset=int(o,0),size=int(z,0),flags=0)
-                for n,t,s,o,z,*_ in rows]
+        return resolve_layout(f)
 
 def security_state(report,key):
     matches=re.findall(r"^\s*"+re.escape(key)+r":\s*(Enabled|Disabled)\s*$",report,re.M)

@@ -4,7 +4,7 @@ import struct
 import tempfile
 import unittest
 from stackchan_backup import TABLE_BYTES,capture
-from stackchan_review import expected_layout,firmware_evidence,review_archive,security_state,validate_esp_image,initial_ota_data
+from stackchan_review import expected_layout,firmware_evidence,review_archive,security_state,validate_esp_image,initial_ota_data,resolve_layout,partition_int
 from test_stackchan_backup import BackupTests
 
 def image(payload=b"abcd", digest=True):
@@ -79,6 +79,19 @@ class ReviewTests(unittest.TestCase):
             ("ota_1",0,17,5308416,5177344,0),
             ("assets",1,130,10485760,4194304,0),
             ("coredump",1,3,14680064,65536,0)])
+    def test_auto_offsets_and_size_units(self):
+        self.assertEqual(partition_int("4M"),0x400000)
+        self.assertEqual(partition_int("64k"),0x10000)
+        self.assertEqual(resolve_layout(["first,app,ota_0,0x10000,0x11000,",
+                                        "second,app,ota_1,,64K,",
+                                        "last,data,spiffs,,4M,"])[1]["offset"],0x30000)
+        for row in ("x,data,nvs,0x8000,0x4000,",
+                    "x,app,ota_0,0x9000,64K,",
+                    "x,data,spiffs,0xf00000,4M,",
+                    "x,data,nvs,0x9000,4K,encrypted"):
+            with self.assertRaises(ValueError):resolve_layout([row])
+        self.assertEqual(hashlib.sha256(table()).hexdigest(),
+                         "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b")
     def test_initial_ota(self):
         data=initial_ota_data()
         self.assertEqual(data,b"\xff"*8192)

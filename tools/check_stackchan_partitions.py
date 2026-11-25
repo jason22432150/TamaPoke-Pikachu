@@ -1,15 +1,14 @@
-import csv
-from pathlib import Path
-p=Path(__file__).resolve().parents[1]/"boards/stackchan/partitions.csv"
-rows=list(csv.reader(line for line in p.read_text().splitlines() if line and not line.startswith("#")))
-end=0x9000
-names=set()
-for name,typ,sub,offset,size,*_ in rows:
-    start,n=int(offset,0),int(size,0)
-    assert name not in names and n>0 and start>=end and start%0x1000==0 and n%0x1000==0
-    if typ=="app": assert start%0x10000==0
-    names.add(name)
-    end=start+n
-    assert end<=0x1000000
-assert end==0xe10000 and names=={"nvs","otadata","phy_init","ota_0","ota_1","assets","coredump"}
-print("Observed K151 16 MiB partition layout: valid bounds and alignment")
+from stackchan_review import expected_layout
+# Independent observed device geometry, not inferred from candidate CSV.
+expected=[
+    ("nvs",1,2,0x9000,0x4000,0),
+    ("otadata",1,0,0xd000,0x2000,0),
+    ("phy_init",1,1,0xf000,0x1000,0),
+    ("ota_0",0,16,0x20000,0x4f0000,0),
+    ("ota_1",0,17,0x510000,0x4f0000,0),
+    ("assets",1,130,0xa00000,0x400000,0),
+    ("coredump",1,3,0xe00000,0x10000,0)]
+actual=[tuple(p[k] for k in ("label","type","subtype","offset","size","flags")) for p in expected_layout()]
+if actual!=expected:
+    raise SystemExit("K151 partition map differs from observed device")
+print("Observed K151 16 MiB partition layout: exact match")

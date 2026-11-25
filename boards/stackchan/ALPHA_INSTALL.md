@@ -144,6 +144,15 @@ ELF and candidate, not a later rebuild. A review is not a hardware test.
 The approved-build set remains empty until the outstanding write-path
 and first-boot risks are reviewed for an exact candidate.
 
+### Factory CSV spelling
+
+The partition CSV follows the owner's supplied ESP-IDF table, including
+blank offsets for ota_1 and coredump and 4M for assets. These resolve to
+0x510000, 0xe00000 and 0x400000 respectively. The expected 3072-byte
+partition image SHA-256 remains
+48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b.
+The installer still preserves the physical partition table and assets.
+
 ## Future approved installation (not yet authorized)
 
 Once a separately reviewed build is approved by maintainers, the installer
