@@ -3,9 +3,10 @@
 StackChan installation is local only. Do not use the upstream Waveshare web
 installer, Chrome/Edge Web Serial, or any browser-based flashing workflow.
 
-**Status: NOT FOR FLASH. No independently approved bootloader/application tuple exists.**
-All instructions currently stop at read-only checks. Do not bypass the installer
-approval gate, run a manual flash command or use force. No factory restoration
+**Status: one exact archived candidate is eligible for supervised ROM-only Flash installation.**
+Do not boot it until the operator has completed Flash readback and reviewed the
+before/after-write eFuse comparison. All other candidates remain NOT FOR FLASH.
+Do not bypass the installer approval gate, run a manual flash command or use force. No factory restoration
 or NVS migration is provided. Physical motors and online OTA stay disabled.
 
 ## Prepare the Mac
@@ -21,10 +22,14 @@ Install Python 3.11+ and Git using their official distribution. In Terminal:
 This downloads the experimental branch and isolates the exact serial tool
 version from your system Python. It does not connect to the device.
 
-Download the candidate named stackchan-alpha-0.1.0-NOT-FOR-FLASH from the
-matching Actions run after the build passes, and extract it into a private
-directory. Match the checkout commit to manifest.json. Never treat an
-artifact label, an integrity hash or green CI as installation approval.
+For the supervised installation use only the archived source-bootloader
+paired candidate from run 45554127667, artifact 14995636144, source commit
+bb5234ef25ca5903309028b76afcbc29dc414011. Extract it into a separate
+private directory. Its original NOT-FOR-FLASH label and manifest flags are
+retained as historical build evidence. The newer installer allowlist is
+the only installation gate; a new green build is not automatically approved.
+Do not use the Arduino-prebuilt-bootloader candidate or any Assets-replacement
+candidate. Never substitute a new rebuild.
 
     python tools/stackchan_package.py verify --out ~/stackchan-alpha-0.1.0
 
@@ -141,8 +146,25 @@ The existing game compile-evidence artifact now retains the exact
 application ELF, linker map and SDK configuration, with their SHA-256
 checked in the paired job. Review these against the matching bootloader
 ELF and candidate, not a later rebuild. A review is not a hardware test.
-The approved-build set remains empty until the outstanding write-path
-and first-boot risks are reviewed for an exact candidate.
+The bounded review of the exact bb5234e artifacts was completed using
+run 45562883467, artifact 14998318439. The known 7 bootloader and 10 app
+base-address loads were traced in complete functions to eFuse reads.
+Three additional explicit app references (0x6000704c/0x60007050) are
+reads for OPI configuration and startup logging. An aligned scan of the
+loaded image segments found 1 bootloader and 27 app words in the eFuse
+address page: the app also contains the 22 words of range_read_addr_blocks,
+which are used by esp_efuse_utility_read_reg, and one incidental word
+inside u8g2_font_unifont_t_japanese3. The indirect utility callback's
+observed call site uses esp_efuse_utility_fill_buff (reads and copies data
+to RAM). The application init_efuse function returns ESP_OK directly.
+No direct references or literal addresses were found for ROM program,
+write_key, set_timing, clear_program_registers or public-key revocation.
+Secure boot, encryption, anti-rollback and nondefault ROM log modes are
+disabled. This is a bounded static review, not a formal proof of all
+computed addresses, ROM behavior or runtime paths. The application SDK
+reports v6.1.1-dirty; first boot remains untested.
+Only the exact reviewed tuple is allowed for supervised ROM-only Flash
+installation. All other builds remain denied.
 
 ### Factory CSV spelling
 
@@ -153,10 +175,9 @@ partition image SHA-256 remains
 48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b.
 The installer still preserves the physical partition table and assets.
 
-## Future approved installation (not yet authorized)
+## Supervised first installation (exact archived candidate only)
 
-Once a separately reviewed build is approved by maintainers, the installer
-will require the exact source commit and all four image digests, explicit
+The installer requires the exact source commit and all four image digests, explicit
 acknowledgement of download mode, same-device identity and compatible layout.
 It will require exact existing table bytes before writing and will not rewrite
 the partition table. Only bootloader (0x0), OTA selection (0xd000) and ota_0
@@ -166,6 +187,12 @@ writes. First boot can still change data in Flash. The installer reads back
 all four image regions and compares eFuse summaries before proceeding. No automatic hard
 reset is requested. A hardware-specific download-mode/USB reset procedure
 must be validated to ensure that the application cannot boot prematurely.
+For the initial write, run install with --acknowledge-download-mode only
+while the device is held in ROM download mode. Keep it there after the
+command completes. Share only write-verified.json (not raw snapshots),
+and review it before any normal boot. If any step fails, stop; do not retry
+or reset into normal firmware. This process cannot guarantee an unchanged
+unreadable eFuse field or prevent a physical USB/power fault.
 After an explicitly supervised first boot, manually re-enter ROM download mode;
 the after-boot command captures
 a third snapshot and compares the observed fields. No such command proves

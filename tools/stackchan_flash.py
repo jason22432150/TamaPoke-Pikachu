@@ -14,8 +14,18 @@ from stackchan_review import security_state
 from stackchan_deploy_review import plan, readback, checkpoints
 
 # Only maintainers can add independently audited (commit, bootloader, app,
-# partition table, initial OTA data) tuples. No CLI override. Empty for Alpha.
-APPROVED_BUILDS=frozenset()
+# partition table, initial OTA data) tuples. No CLI override.
+# Bounded static review of the exact archived bb5234e binaries: build run
+# 45554127667, disassembly run 45562883467. Approval is for supervised
+# ROM-only Flash installation, not a guarantee of first-boot eFuse safety.
+# Keep in download mode until Flash readback and eFuse comparison succeed.
+APPROVED_BUILDS=frozenset({(
+    "bb5234ef25ca5903309028b76afcbc29dc414011",
+    "8a7d2bb8a3ea22e1b8d9d44c2ec0e965727231066feda335234a16ac8ea0de0a",
+    "d0d54b1feab01787a8b36f606b00f29ede2f4375d5b8b1c48577a83b8644ed2b",
+    "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+    "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+)})
 
 def identity(p):
     by_name={r["name"]:r["sha256"] for r in p["regions"]}
