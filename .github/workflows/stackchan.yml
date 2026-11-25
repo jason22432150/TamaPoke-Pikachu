@@ -91,7 +91,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: stackchan-K151-game-compile-evidence-NOT-FOR-FLASH
-          path: build/stackchan-game-review/*.json
+          path: |
+            build/stackchan-game-review/*.json
+            build/stackchan-game-review/TamaPoke.ino.elf
+            build/stackchan-game-review/TamaPoke.ino.map
+            build/stackchan-game-review/sdkconfig
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
@@ -139,6 +143,23 @@ jobs:
         with:
           name: stackchan-source-bootloader-NOT-FOR-FLASH
           path: ${{ runner.temp }}/source-bootloader
+      - name: Verify exact linked review inputs
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"arduino-evidence"
+          evidence=json.loads((root/"boot-evidence.json").read_text())
+          expected={
+              "TamaPoke.ino.elf":evidence["application_efuse_symbols"]["elf_sha256"],
+              "TamaPoke.ino.map":evidence["app_map_sha256"],
+              "sdkconfig":evidence["sdk_config_sha256"],
+          }
+          for name,digest in expected.items():
+              if hashlib.sha256((root/name).read_bytes()).hexdigest()!=digest:
+                  raise SystemExit("review input digest mismatch: "+name)
+          print("Exact application ELF, linker map and SDK configuration verified.")
+          PY
       - name: Pair the same-commit source bootloader and application
         run: |
           python3 tools/stackchan_package.py combine \

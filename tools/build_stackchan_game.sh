@@ -54,14 +54,16 @@ WORK="$STAGE/work"
 ARGS=(--warnings all --build-property 'compiler.cpp.extra_flags=-DBOARD_STACKCHAN=1' --build-property 'compiler.c.elf.extra_flags=-Wl,--wrap=nvs_flash_init' --fqbn 'esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=enabled,PartitionScheme=app3M_fat9M_16MB' --build-path "$WORK")
 arduino-cli compile "${ARGS[@]}" --show-properties=expanded "$SKETCH" > "$STAGE/properties.txt"
 arduino-cli compile "${ARGS[@]}" --output-dir "$BIN" "$SKETCH"
-# Validate real compile outputs; publish only evidence, never the binaries.
+# Validate real compile outputs; retain exact linked inputs for offline review.
 REPORT="$ROOT/build/stackchan-game-review"
 mkdir -p "$REPORT"
-rm -f "$REPORT/manifest.json" "$REPORT/boot-evidence.json"
+rm -f "$REPORT/manifest.json" "$REPORT/boot-evidence.json" "$REPORT/TamaPoke.ino.elf" "$REPORT/TamaPoke.ino.map" "$REPORT/sdkconfig"
 python3 "$ROOT/tools/stackchan_deploy_review.py" boot-evidence --properties "$STAGE/properties.txt" \
   --build-dir "$WORK" --bins "$BIN" --commit "$(git -C "$ROOT" rev-parse HEAD)" --report "$REPORT/boot-evidence.json"
 python3 "$ROOT/tools/stackchan_review.py" firmware --bins "$BIN" \
   --commit "$(git -C "$ROOT" rev-parse HEAD)" --report "$REPORT/manifest.json"
+# Preserve the exact ELF inspected above, not an ELF from a later rebuild.
+cp "$WORK/TamaPoke.ino.elf" "$WORK/TamaPoke.ino.map" "$WORK/sdkconfig" "$REPORT/"
 if [[ -n "$PACKAGE" ]]; then
   python3 "$ROOT/tools/stackchan_package.py" create --bins "$BIN" \
     --commit "$(git -C "$ROOT" rev-parse HEAD)" --out "$PACKAGE"

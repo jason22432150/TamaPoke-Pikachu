@@ -269,7 +269,7 @@ def boot_evidence(properties,build_dir,bins,source_commit):
         if image.read_bytes()!=boot.read_bytes():
             raise ValueError("bootloader differs from reproduced ELF conversion")
     return dict(schema=1,source_commit=source_commit,arduino_core="4.0.0",
-                sdk_config_sha256=sha256(config),bootloader_elf_name=elf.name,
+                sdk_config_sha256=sha256(config),app_map_sha256=sha256(build_dir/"TamaPoke.ino.map"),bootloader_elf_name=elf.name,
                 bootloader_elf_sha256=sha256(elf),bootloader_bin_sha256=sha256(boot),
                 app_sha256=sha256(bins/"TamaPoke.ino.bin"),sdk_security_settings=settings,
                 application_efuse_symbols=app_symbols,nvs_startup_guard_reference=True,

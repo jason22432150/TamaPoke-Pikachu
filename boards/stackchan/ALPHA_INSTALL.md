@@ -120,6 +120,30 @@ A read-only probe must report both layout_matches and table_bytes_match
 as true; a logically equivalent but byte-different table is not accepted.
 Do not repartition or edit the table to bypass this check.
 
+### Exact candidate review status
+
+CI run 45552457156 (commit 5d08fb245f082e0b5e5aba9bc7a06a73c3227511)
+passed all six jobs. The owner reported a successful ROM-only read-only
+probe against the earlier d811939 candidate: 16 MiB, secure boot and flash
+encryption disabled, raw crypt count zero, layout and table bytes equal.
+This is evidence of read-only compatibility on that unit, not of a write
+or first boot, and does not establish that USB stayed in download mode
+after the last command.
+
+The 5d08fb2 candidate has no matched linked eFuse writer symbols or explicit
+ROM write references. The bounded instruction evidence for three eFuse base
+address literals (one bootloader, two application) contains reads of the
+ESP32-S3 readback registers at offsets 0x34, 0x3c, 0x40, 0x50, 0x54, 0x58
+and 0x6c. This does not resolve all subsequent control flow or computed
+addresses. The Arduino application still reports v6.1.1-dirty.
+
+The existing game compile-evidence artifact now retains the exact
+application ELF, linker map and SDK configuration, with their SHA-256
+checked in the paired job. Review these against the matching bootloader
+ELF and candidate, not a later rebuild. A review is not a hardware test.
+The approved-build set remains empty until the outstanding write-path
+and first-boot risks are reviewed for an exact candidate.
+
 ## Future approved installation (not yet authorized)
 
 Once a separately reviewed build is approved by maintainers, the installer
