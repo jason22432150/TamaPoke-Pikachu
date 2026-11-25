@@ -1,8 +1,41 @@
 #include "hal/board_hal.h"
+#include "hal/native_raster.h"
 #include <cassert>
 #include <cstdlib>
 static uint16_t frame[GAME_SIZE*GAME_SIZE];
 static uint16_t row[VIEW_SIZE],xMap[VIEW_SIZE];
+static uint16_t native[tpkraster::PIXELS+2];
+static void referenceRect(int x,int y,int w,int h,uint16_t color){
+  if(w<0){x+=w+1;w=-w;}
+  if(h<0){y+=h+1;h=-h;}
+  for(int py=std::max(0,y);py<std::min(GAME_SIZE,y+h);py++)
+    for(int px=std::max(0,x);px<std::min(GAME_SIZE,x+w);px++)
+      frame[py*GAME_SIZE+px]=color;
+}
+static void checkNative(bool home){
+  tpkraster::Raster raster;
+  native[0]=0xA55A;native[tpkraster::PIXELS+1]=0x5AA5;
+  raster.begin(native+1);raster.mode(home);
+  referenceRect(0,0,GAME_SIZE,GAME_SIZE,0x1234);
+  raster.rect(0,0,GAME_SIZE,GAME_SIZE,0x1234);
+  // Exercise thin glyph/pixel runs, negative and clipped dimensions, edge
+  // extension, and overwrite order. Deterministic without a random library.
+  uint32_t state=123456789;
+  auto next=[&](){state=state*1664525u+1013904223u;return state;};
+  for(int i=0;i<2000;i++){
+    const int x=int(next()%600)-70,y=int(next()%600)-70;
+    const int w=int(next()%121)-60,h=int(next()%121)-60;
+    const uint16_t color=uint16_t(next());
+    referenceRect(x,y,w,h,color);raster.rect(x,y,w,h,color);
+    referenceRect(x,y,1,1,color^0xFFFF);raster.rect(x,y,1,1,color^0xFFFF);
+  }
+  for(int y=0;y<raster.height();y++)
+    for(int x=0;x<raster.width();x++){
+      int lx=home?homeLogicalX(x):logicalAxis(x),ly=logicalAxis(y);
+      assert(raster.row(y)[x]==frame[ly*GAME_SIZE+lx]);
+    }
+  assert(native[0]==0xA55A&&native[tpkraster::PIXELS+1]==0x5AA5);
+}
 int main(){
   for(int x=0;x<VIEW_SIZE;x++) xMap[x]=logicalAxis(x);
   for(int y=0;y<GAME_SIZE;y++) for(int x=0;x<GAME_SIZE;x++)
@@ -44,4 +77,5 @@ int main(){
   assert(!homeToLogical({-1,HOME_Y,true}).valid);
   assert(!homeToLogical({HOME_W,HOME_Y,true}).valid);
   assert(homeToLogical({HOME_W-1,HOME_BOTTOM-1,true}).y<312);
+  checkNative(false);checkNative(true);checkNative(false);
 }

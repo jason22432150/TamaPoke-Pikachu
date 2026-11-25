@@ -111,8 +111,15 @@ physical display still require testing. Nickname input remains ASCII.
 The ordinary hatched-pet home uses top 36px status, a 320x160 scene and
 bottom 44px action bar (Feed, Play, Light, Bath, Info, Dex, Settings).
 The central 240px of the scene retains isotropic legacy sampling; outer scenery
-extends each edge sample. The existing 466x466 framebuffer remains, so this
-is a transitional landscape compositor, not a native-resolution renderer.
+extends each edge sample. B2 replaces the 466x466 backing framebuffer with a shared physical viewport
+raster (max 240x240 RGB565, 115200 bytes). The 466x466 drawing coordinate
+API remains for compatibility; rect/pixel/line writes use precomputed inverse
+sampling boundaries and clip directly into the selected physical raster.
+Flush copies only physical rows to the existing synchronous internal-RAM
+strip. Host tests compare both viewport modes against reference logical
+raster sampling, including clipped rectangles and boundary sentinels.
+This does not yet reflow individual screens or remove edge extension.
+Actual FPS, memory use and visual fidelity still require hardware validation.
 Egg, modal, bath, evolution/farewell prompts, gallery, settings and minigames
 retain compatibility geometry. Display and touch share the geometry; changes
 cancel in-flight gestures. Legacy side panels remain in those screens.
