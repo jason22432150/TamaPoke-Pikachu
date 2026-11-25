@@ -2,14 +2,16 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from stackchan_efuse import capture,verify,compare,REQUIRED
+from stackchan_efuse import capture,verify,compare,REQUIRED,raw_crypt_count,checked_crypt_count
 
-def runner(changed=False,mac="00:11:22:33:44:55",missing=False,mac_status=" (OK)"):
+def runner(changed=False,mac="00:11:22:33:44:55",missing=False,mac_status=" (OK)",crypt_count=0):
     def run(args,path):
         if args[-1]=="version":
             report="esptool v5.1.0"
         elif args[-1]=="read-mac":
             report="MAC: "+mac
+        elif args[-1]=="get-security-info":
+            report=f"SPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): {crypt_count:#x}"
         elif "summary" in args:
             assert args[1:3]==["-m","espefuse"]
             assert args[-4:-1]==["--format","json","--file"]
@@ -17,6 +19,7 @@ def runner(changed=False,mac="00:11:22:33:44:55",missing=False,mac_status=" (OK)
                          block=0,word=0,pos=0,bit_len=1,efuse_type="uint:1") for k in REQUIRED}
             data["MAC"]["value"]=mac+mac_status
             data["WR_DIS"]["value"]=int(changed)
+            data["SPI_BOOT_CRYPT_CNT"]["value"]={0:"Disable",1:"Enable",3:"Disable",7:"Enable"}.get(crypt_count,crypt_count)
             if missing:del data["RD_DIS"]
             Path(args[-1]).write_text(json.dumps(data))
             report="summary complete"
@@ -50,6 +53,24 @@ class SnapshotTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,"summary MAC"):
                     capture("fake",out,runner(mac_status=status))
                 self.assertFalse((out/"manifest.json").exists())
+    def test_raw_count(self):
+        prefix="SPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): "
+        for raw in range(8):
+            report=prefix+hex(raw)
+            meaning={0:"Disable",1:"Enable",3:"Disable",7:"Enable"}.get(raw,raw)
+            self.assertEqual(checked_crypt_count(dict(readable=True,value=meaning),report),raw)
+            self.assertEqual(checked_crypt_count(dict(readable=True,value=raw),report),raw)
+        for report in ("",prefix+"0x8",prefix+"0x0\n"+prefix+"0x0",prefix+"unknown"):
+            with self.assertRaises(ValueError):raw_crypt_count(report)
+        for row in (dict(readable=False,value="Disable"),dict(readable=True,value="Enable"),
+                    dict(readable=True,value=False),dict(readable=True,value=3)):
+            with self.assertRaises(ValueError):checked_crypt_count(row,prefix+"0x0")
+    def test_raw_count_change_even_when_meaning_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            a,b=Path(tmp)/"a",Path(tmp)/"b"
+            capture("fake",a,runner(crypt_count=0))
+            capture("fake",b,runner(crypt_count=3))
+            self.assertEqual(compare(a,b)["changed_fields"],["SPI_BOOT_CRYPT_CNT"])
     def test_incomplete(self):
         with tempfile.TemporaryDirectory() as tmp:
             out=Path(tmp)/"bad"

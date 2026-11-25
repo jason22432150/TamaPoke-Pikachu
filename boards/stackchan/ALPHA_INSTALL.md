@@ -59,6 +59,18 @@ omits MAC and eFuse values and can be provided for layout review. If the
 probe fails earlier, report only the error message. Do not share the private
 before/ snapshot, raw eFuse summary, or MAC addresses publicly.
 
+### Flash encryption count parsing
+
+Espefuse 5.1.0 uses the display string "Disable" for raw SPI_BOOT_CRYPT_CNT
+values 0 and 3. The installer requires raw count 0 from get-security-info
+and verifies that it agrees with the summary; a disabled encryption status
+alone is not sufficient. New eFuse snapshots include the raw counter in
+their evidence (schema 2). Capture fresh snapshots; schema 1 snapshots
+cannot establish the raw counter and are not interchangeable.
+If the probe fails, share only the line beginning
+SPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): from security.txt, not the
+full security report or eFuse snapshot. Never modify the counter.
+
 ## Source bootloader reference (build only)
 
 The Arduino 4.0.0 candidate continues to use its existing precompiled

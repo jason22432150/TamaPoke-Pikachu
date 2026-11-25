@@ -42,7 +42,7 @@ class FlashTests(unittest.TestCase):
                 if "--before" in args:
                     self.assertEqual(args[args.index("--before")+1],"no-reset")
                 if "get-security-info" in args:
-                    report="Secure Boot: Disabled\nFlash Encryption: Disabled"
+                    report="Secure Boot: Disabled\nFlash Encryption: Disabled\nSPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): 0x0"
                 elif "flash-id" in args:
                     report="Detected flash size: 16MB"
                 elif "write-flash" in args:
@@ -79,7 +79,7 @@ class FlashTests(unittest.TestCase):
             fake=efuse_runner()
             def serial(args,log):
                 self.assertNotIn("write-flash",args)
-                if "get-security-info" in args:msg="Secure Boot: Disabled\nFlash Encryption: Disabled"
+                if "get-security-info" in args:msg="Secure Boot: Disabled\nFlash Encryption: Disabled\nSPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): 0x0"
                 elif "flash-id" in args:msg="Detected flash size: 16MB"
                 elif "read-flash" in args:
                     Path(args[-1]).write_bytes(raw);msg="simulated read"
@@ -97,6 +97,24 @@ class FlashTests(unittest.TestCase):
             self.assertEqual(report["current_partitions"][0]["label"],"old")
             self.assertEqual(report["candidate_partitions"][0]["label"],"nvs")
 
+    def test_probe_rejects_nonzero_raw_count_even_when_disabled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);bins=root/"bins";bins.mkdir()
+            for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
+                (bins/name).write_bytes(image())
+            (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
+            c=root/"candidate";package(bins,c,"a"*40)
+            fake=efuse_runner(crypt_count=3)
+            def serial(args,log):
+                self.assertNotIn("write-flash",args)
+                self.assertNotIn("read-flash",args)
+                if "get-security-info" in args:
+                    report="Secure Boot: Disabled\nFlash Encryption: Disabled\nSPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): 0x3"
+                    log.write_text(report)
+                    return report
+                return fake(args,log)
+            with self.assertRaisesRegex(ValueError,"raw count must be zero"):
+                probe(c,"/dev/cu.usbmodem1",root/"probe",serial)
     def test_port_rejects_argument_injection(self):
         for port in ("@file","--force","/dev/cu.test @file","/tmp/tty"):
             with self.assertRaises(ValueError):serial_prefix(port)

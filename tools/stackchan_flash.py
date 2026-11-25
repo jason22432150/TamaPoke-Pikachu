@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 from stackchan_backup import run_logged, mac_of, parse_table, TABLE_BYTES
-from stackchan_efuse import capture, compare, verify, fields, read_json
+from stackchan_efuse import capture, compare, verify, fields, read_json, checked_crypt_count
 from stackchan_review import security_state
 from stackchan_deploy_review import plan, readback, checkpoints
 
@@ -47,10 +47,12 @@ def probe(candidate,port,out,runner=run_logged,snapshot=capture):
     if any(security_state(info,k)!="disabled" for k in ("Secure Boot","Flash Encryption")):
         raise ValueError("device security enabled or unknown")
     data=fields(out/"before"/"summary.json")
-    for key in ("SECURE_BOOT_EN","SPI_BOOT_CRYPT_CNT"):
-        row=data[key]
-        if not row["readable"] or type(row["value"]) not in (bool,int) or row["value"]!=0:
-            raise ValueError("security eFuse nonzero or unknown: "+key)
+    row=data["SECURE_BOOT_EN"]
+    if not row["readable"] or type(row["value"]) not in (bool,int) or row["value"]!=0:
+        raise ValueError("security eFuse nonzero or unknown: SECURE_BOOT_EN")
+    count=checked_crypt_count(data["SPI_BOOT_CRYPT_CNT"],info)
+    if count!=0 or baseline["spi_boot_crypt_cnt"]!=0:
+        raise ValueError("security eFuse nonzero: SPI_BOOT_CRYPT_CNT (raw count must be zero)")
     flash=run(["flash-id"],"flash-id.txt")
     if not re.search(r"Detected flash size:\s*16\s*MB\b",flash,re.I):
         raise ValueError("expected 16 MiB flash")
@@ -68,6 +70,7 @@ def probe(candidate,port,out,runner=run_logged,snapshot=capture):
     # Shareable layout-only report: no MAC, key values or raw eFuse contents.
     report=dict(schema=1,source_commit=p["source_commit"],chip="esp32s3",
                 flash_bytes=p["flash_bytes"],secure_boot="disabled",flash_encryption="disabled",
+                spi_boot_crypt_cnt=count,
                 layout_matches=actual==expected,table_bytes_match=table.read_bytes()==compiled_table,
                 current_partitions=actual,
                 candidate_partitions=expected,flash_authorized=False,efuse_write_allowed=False)

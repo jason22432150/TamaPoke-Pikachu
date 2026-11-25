@@ -10,7 +10,7 @@ import sys
 from stackchan_backup import run_logged,mac_of,sha256
 
 VERSION="5.1.0"
-FILES=("version.txt","mac-before.txt","summary.json","summary.log","mac-after.txt")
+FILES=("version.txt","mac-before.txt","summary.json","summary.log","security.txt","mac-after.txt")
 REQUIRED={"MAC","WR_DIS","RD_DIS","SECURE_BOOT_EN","SPI_BOOT_CRYPT_CNT"}
 
 def unique(pairs):
@@ -39,6 +39,30 @@ def fields(path):
             raise ValueError("invalid eFuse length")
     return data
 
+def raw_crypt_count(report):
+    # esptool 5.1.0 get-security-info prints the raw three-bit field.
+    # Reject duplicate, malformed and out-of-range records.
+    lines=[line for line in report.splitlines()
+           if line.lstrip().startswith("SPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT):")]
+    if len(lines)!=1:
+        raise ValueError("missing or duplicate raw SPI_BOOT_CRYPT_CNT")
+    m=re.fullmatch(r"\s*SPI Boot Crypt Count \(SPI_BOOT_CRYPT_CNT\):\s*0x([0-7])\s*",lines[0])
+    if not m:
+        raise ValueError("invalid raw SPI_BOOT_CRYPT_CNT")
+    return int(m[1],16)
+
+def checked_crypt_count(row,report):
+    count=raw_crypt_count(report)
+    if row.get("readable") is not True:
+        raise ValueError("SPI_BOOT_CRYPT_CNT not readable")
+    # The pinned ESP32-S3 definition maps raw 0 and 3 to "Disable",
+    # and 1 and 7 to "Enable". Other values remain numeric.
+    value=row.get("value")
+    if not ((type(value) is int and value==count)
+            or (type(value) is str and value=={0:"Disable",1:"Enable",3:"Disable",7:"Enable"}.get(count))):
+        raise ValueError("SPI_BOOT_CRYPT_CNT summary and raw count disagree")
+    return count
+
 def evidence(out):
     for name in FILES:
         p=out/name
@@ -58,7 +82,8 @@ def evidence(out):
                    str(mac["value"]),re.I)
     if not mac["readable"] or not m or m[1].lower()!=a:
         raise ValueError("summary MAC differs from device or has a block error")
-    return dict(schema=1,chip="esp32s3",version=VERSION,mac=a,
+    count=checked_crypt_count(data["SPI_BOOT_CRYPT_CNT"],(out/"security.txt").read_text())
+    return dict(schema=2,chip="esp32s3",version=VERSION,mac=a,spi_boot_crypt_cnt=count,
                 fields=len(data),unreadable=sum(not x["readable"] for x in data.values()),
                 files={n:sha256(out/n) for n in FILES},flash_authorized=False)
 
@@ -74,6 +99,7 @@ def capture(port,out,runner=run_logged,before="default-reset"):
     runner(mac,out/"mac-before.txt")
     runner([sys.executable,"-m","espefuse","--chip","esp32s3","--port",port,"--before",before,
             "summary","--format","json","--file",str(out/"summary.json")],out/"summary.log")
+    runner(mac[:-1]+["get-security-info"],out/"security.txt")
     runner(mac,out/"mac-after.txt")
     m=evidence(out)
     with (out/"manifest.json").open("x",encoding="utf-8") as f:
@@ -91,7 +117,10 @@ def compare(before,after):
     a,b=verify(before),verify(after)
     if a["mac"]!=b["mac"]:raise ValueError("different device")
     x,y=fields(before/"summary.json"),fields(after/"summary.json")
-    changed=sorted(k for k in x.keys()|y.keys() if x.get(k)!=y.get(k))
+    changed={k for k in x.keys()|y.keys() if x.get(k)!=y.get(k)}
+    if a["spi_boot_crypt_cnt"]!=b["spi_boot_crypt_cnt"]:
+        changed.add("SPI_BOOT_CRYPT_CNT")
+    changed=sorted(changed)
     if verify(before)!=a or verify(after)!=b:raise ValueError("snapshot changed during comparison")
     return dict(status="changed" if changed else "observable-summary-unchanged",
                 changed_fields=changed,unreadable_before=a["unreadable"],
