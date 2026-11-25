@@ -78,6 +78,8 @@ def probe(candidate,port,out,runner=run_logged,snapshot=capture):
         json.dump(report,dst,indent=2)
     if actual!=expected:
         raise ValueError("device layout differs; migration is not authorized; inspect layout-report.json")
+    if not report["table_bytes_match"]:
+        raise ValueError("device partition table bytes differ; inspect layout-report.json; no write")
     return p,baseline
 
 def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture):

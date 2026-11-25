@@ -128,6 +128,8 @@ def combine(candidate,source_bootloader,arduino_evidence,out):
         or arduino.get("app_sha256")!=by_name["TamaPoke.ino.bin"]
         or arduino.get("bootloader_bin_sha256")!=by_name["TamaPoke.ino.bootloader.bin"]):
         raise ValueError("Arduino compile evidence mismatch")
+    if arduino.get("nvs_startup_guard_reference") is not True:
+        raise ValueError("missing NVS startup guard evidence")
     require_clean_efuse_screen(source.get("bootloader_efuse_symbols",{}),"call_start_cpu0",
                                hashes["bootloader.bin"],hashes["bootloader.elf"])
     require_clean_efuse_screen(arduino.get("application_efuse_symbols",{}),"app_main",
@@ -156,7 +158,7 @@ def combine(candidate,source_bootloader,arduino_evidence,out):
                 application_idf_version=version,source_bootloader_sha256=hashes["bootloader.bin"],
                 arduino_bootloader_sha256=by_name["TamaPoke.ino.bootloader.bin"],
                 app_sha256=by_name["TamaPoke.ino.bin"],paired_manifest=paired,
-                efuse_static_screen_passed=True,
+                efuse_static_screen_passed=True,nvs_startup_guard_reference=True,
                 flash_authorized=False,bootloader_security_attested=False,
                 warning="Matching SDK and image headers do not establish runtime compatibility or eFuse safety.")
 

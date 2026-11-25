@@ -77,6 +77,7 @@ class PackageTests(unittest.TestCase):
             evidence=root/"arduino.json"
             evidence.write_text(json.dumps(dict(source_commit="a"*40,arduino_core="4.0.0",
                 elf_conversion_matches=True,flash_authorized=False,bootloader_security_attested=False,
+                nvs_startup_guard_reference=True,
                 app_sha256=digest(app),bootloader_bin_sha256=digest(old_boot),
                 application_efuse_symbols=screen("app_main",digest(app),"c"*64))))
             out=root/"paired"
@@ -86,6 +87,17 @@ class PackageTests(unittest.TestCase):
             self.assertEqual((out/"TamaPoke.ino.bin").read_bytes(),app)
             self.assertEqual(report["paired_manifest"],verify_package(out))
             self.assertTrue(report["efuse_static_screen_passed"])
+            self.assertTrue(report["nvs_startup_guard_reference"])
+            original=json.loads(evidence.read_text())
+            for value in (None,False,1,"true"):
+                modified=dict(original)
+                if value is None: modified.pop("nvs_startup_guard_reference")
+                else: modified["nvs_startup_guard_reference"]=value
+                evidence.write_text(json.dumps(modified))
+                with self.assertRaisesRegex(ValueError,"NVS startup guard"):
+                    combine(candidate,src,evidence,root/"bad")
+                self.assertFalse((root/"bad").exists())
+            evidence.write_text(json.dumps(original))
             audit=m["bootloader_efuse_symbols"]
             for key,value in (("linked_code_symbols",["esp_efuse_write_key"]),("image_sha256","f"*64)):
                 previous=audit[key];audit[key]=value

@@ -104,10 +104,15 @@ The observed K151 map has a 16 KiB default NVS partition. Arduino ESP32
 nvs_flash_init() returns ESP_ERR_NVS_NO_FREE_PAGES or
 ESP_ERR_NVS_NEW_VERSION_FOUND. The game candidate now wraps nvs_flash_init
 at link time to suppress that specific automatic format path and stops
-game startup if NVS initialization fails. CI checks the startup reference.
+game startup if NVS initialization fails. CI checks the startup reference,
+and paired packaging rejects missing or false guard evidence.
 This does not make NVS read-only: normal SDK recovery/compaction and game
 preferences can still change Flash. Diagnostic artifacts and older game
 candidates do not have this safeguard and remain NOT FOR FLASH.
+
+A read-only probe must report both layout_matches and table_bytes_match
+as true; a logically equivalent but byte-different table is not accepted.
+Do not repartition or edit the table to bypass this check.
 
 ## Future approved installation (not yet authorized)
 

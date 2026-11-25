@@ -97,6 +97,37 @@ class FlashTests(unittest.TestCase):
             self.assertEqual(report["current_partitions"][0]["label"],"old")
             self.assertEqual(report["candidate_partitions"][0]["label"],"nvs")
 
+    def test_probe_rejects_equal_layout_different_table_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);bins=root/"bins";bins.mkdir()
+            for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
+                (bins/name).write_bytes(image())
+            (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
+            c=root/"candidate";package(bins,c,"a"*40)
+            raw=bytearray(table())
+            # Change unused bytes after the first NUL in the NVS label;
+            # parsed entries remain identical and the MD5 is recomputed.
+            raw[16]=0x58
+            terminator=next(i for i in range(0,len(raw),32) if raw[i:i+2]==b"\xeb\xeb")
+            raw[terminator+16:terminator+32]=hashlib.md5(raw[:terminator]).digest()
+            fake=efuse_runner()
+            def serial(args,log):
+                self.assertNotIn("write-flash",args)
+                if "get-security-info" in args:
+                    msg="Secure Boot: Disabled\nFlash Encryption: Disabled\nSPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): 0x0"
+                elif "flash-id" in args:msg="Detected flash size: 16MB"
+                elif "read-flash" in args:
+                    Path(args[-1]).write_bytes(raw);msg="simulated read"
+                else:return fake(args,log)
+                log.write_text(msg);return msg
+            out=root/"probe"
+            with self.assertRaisesRegex(ValueError,"partition table bytes differ"):
+                probe(c,"/dev/cu.usbmodem1",out,serial)
+            report=json.loads((out/"layout-report.json").read_text())
+            self.assertTrue(report["layout_matches"])
+            self.assertFalse(report["table_bytes_match"])
+            self.assertFalse(report["flash_authorized"])
+
     def test_probe_rejects_nonzero_raw_count_even_when_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);bins=root/"bins";bins.mkdir()
