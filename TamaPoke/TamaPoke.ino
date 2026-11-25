@@ -66,6 +66,7 @@ static StackChanCanvas *gfx=&stackCanvas;
 static StackChanPanel *panel=&stackPanel;
 static bool stackGameReady=false;
 static tpkhome::Page stackPresentedPage=tpkhome::Page::Compat;
+static uint8_t stackPresentedToken=0;
 #else
 #define FW_VERSION "1.19-pika"
 
@@ -522,7 +523,11 @@ void ensureMon() {
 static tpkhome::Page stackHomePage(){
   using tpkhome::Page;
   if(pet.awaitingStarter())return Page::Starter;
-  if(galleryOpen||cardOpen||kbOpen||clockOpen||gameOpen||sackOpen)return Page::Compat;
+  if(galleryOpen)return galleryDetail?Page::GalleryDetail:Page::GalleryGrid;
+  if(gameOpen||sackOpen)return Page::Compat;
+  if(kbOpen)return Page::Keyboard;
+  if(clockOpen)return Page::Clock;
+  if(cardOpen)return static_cast<Page>(uint8_t(Page::CardProfile)+(cardPage>3?3:cardPage));
   if(pet.ceremony)return Page::Ceremony;
   if(choiceKind)return choiceKind==1?Page::EvolveChoice:Page::FarewellChoice;
   if(confirmUntil)return Page::Release;
@@ -533,6 +538,9 @@ static tpkhome::Page stackHomePage(){
   if(pet.canRunawayNow())return Page::RunawayPrompt;
   if(pet.wantFarewellButton())return Page::FarewellPrompt;
   return Page::Pet;
+}
+static uint8_t stackPageToken(tpkhome::Page page){
+  return page==tpkhome::Page::GalleryGrid?uint8_t(32+galleryPage):uint8_t(page);
 }
 static tpkside::Availability sidebarAvailability(){
   return {!galleryOpen&&!cardOpen&&!kbOpen&&!clockOpen&&!gameOpen&&!sackOpen&&
@@ -669,14 +677,16 @@ void loop() {
     lastRender = now;
 #if BOARD_STACKCHAN
     const auto framePage=stackHomePage();
+    const uint8_t frameToken=stackPageToken(framePage);
     stackCanvas.setLandscapeHome(tpkhome::landscape(framePage));
     const bool measure=stackPerf.monitor().enabled();
     const uint32_t started=measure?micros():0;
 #endif
     drewFrame = render();
 #if BOARD_STACKCHAN
-    if(drewFrame && stackCanvas.landscapePresented()==tpkhome::landscape(framePage))
-      stackPresentedPage=framePage;
+    if(drewFrame && stackCanvas.landscapePresented()==tpkhome::landscape(framePage)){
+      stackPresentedPage=framePage;stackPresentedToken=frameToken;
+    }
     if(measure)stackPerf.monitor().rendered(micros()-started);
 #endif
 #if BOARD_AMOLED_175C
@@ -1028,13 +1038,13 @@ void handleTouch() {
   const bool landscape=stackCanvas.landscapePresented();
   const auto page=stackHomePage();
   // Do not act on stale pixels while a new dialog or page awaits rendering.
-  if(page!=stackPresentedPage || landscape!=tpkhome::landscape(page)){
+  if(page!=stackPresentedPage || stackPageToken(page)!=stackPresentedToken || landscape!=tpkhome::landscape(page)){
     stackTouchRouter.block(physical);
     wasPressed=false;holdFired=false;swallowGesture=true;
     if(physical.pressed){screenOff=false;wakeUI();}
     return;
   }
-  auto routed=stackTouchRouter.update(physical,sidebarAvailability(),millis(),landscape,uint8_t(page));
+  auto routed=stackTouchRouter.update(physical,sidebarAvailability(),millis(),landscape,stackPageToken(page));
   if(routed.cancel) {wasPressed=false;holdFired=false;swallowGesture=true;}
   if(routed.wake) {screenOff=false;wakeUI();}
   if(!routed.forward) {
@@ -1231,6 +1241,16 @@ void onTap(int16_t x, int16_t y) {
   }
   if (pet.ceremony) return;  // durante la despedida no hay botones
   if (cardOpen) {
+#if BOARD_STACKCHAN
+    if(tpkhome::NAV_BACK.contains(x,y)){cardOpen=false;return;}
+    if(tpkhome::NAV_PREV.contains(x,y)){if(cardPage>0)--cardPage;return;}
+    if(tpkhome::NAV_NEXT.contains(x,y)){if(cardPage<3)++cardPage;return;}
+    if(cardPage==0&&tpkhome::CARD_RENAME.contains(x,y)){openKeyboard();return;}
+    if(cardPage==1&&tpkhome::CARD_TRAIN.contains(x,y)){
+      cardOpen=false;startSack();
+    }
+    return;
+#else
     if (cardPage == 0 && y < 84) openKeyboard();  // tocar el nombre = renombrar
     else if (cardPage == 1 && y >= 300 && y <= 340 && x >= 96 && x <= 370) {
       cardOpen = false;            // boton ENTRENAR FUERZA
@@ -1239,6 +1259,7 @@ void onTap(int16_t x, int16_t y) {
       cardOpen = false;
     }
     return;
+#endif
   }
   if (gameOpen) {
     gameTap(x, y);
@@ -1451,8 +1472,9 @@ void drawScene(uint8_t biome, uint32_t now, bool night) {
 // Keep shared draw and hit rectangles in logical space; B2 rasterizes them
 // directly into the landscape viewport. Fit localized captions to each card.
 static void stackDialogText(const char* s,int x,int y,int w,uint8_t size,uint16_t color){
-  while(size>1&&textW(s,size)>w-6)--size;
-  gfx->setTextColor(color);setSize(size);
+  setSize(size);
+  while(size>1&&textW(s,size)>w-6){--size;setSize(size);}
+  gfx->setTextColor(color);
   setCur(x+(w-int(textW(s,size)))/2,y);printT(s);
 }
 static void stackDialogBox(tpkhome::Rect b,uint16_t color,uint16_t border){
@@ -2286,6 +2308,24 @@ static void drawLevelBars(int x, int lit) {
 }
 
 void renderClock() {
+#if BOARD_STACKCHAN
+  gfx->fillScreen(UI_BG_DAY);
+  stackDialogText(T(S_SET_TIME),12,8,442,3,UI_INK);
+  char timebuf[8];snprintf(timebuf,sizeof(timebuf),"%02d:%02d",clockH,clockM);
+  stackDialogText(timebuf,12,42,442,5,UI_INK);
+  char sound[20],bright[20],lang[20];
+  if(audioEnabled())snprintf(sound,sizeof(sound),"VOL %u",unsigned(VOL_LEVELS-audioVolume()));
+  else snprintf(sound,sizeof(sound),"VOL OFF");
+  snprintf(bright,sizeof(bright),"BRI %u",unsigned(BRIGHT_LEVELS-userDim));
+  snprintf(lang,sizeof(lang),"LANG %s",LANG_CODES[gLang]);
+  const char* labels[]={ "H -","H +","M -","M +",sound,bright,lang,"OK","X" };
+  for(int i=0;i<9;i++){
+    auto b=tpkhome::clockControl(i);
+    stackDialogBox(b,i==7?UI_BAR_OK:UI_WHITE,UI_INK);
+    stackDialogText(labels[i],b.x,b.y+14,b.w,3,i==7?UI_WHITE:UI_INK);
+  }
+  flushUI();return;
+#endif
   gfx->fillScreen(RGB565_BLACK);
   gfx->fillCircle(CX, CY, 231, UI_BG_DAY);
   gfx->setTextColor(UI_INK);
@@ -2373,6 +2413,15 @@ void renderClock() {
 }
 
 void clockTap(int16_t x, int16_t y) {
+#if BOARD_STACKCHAN
+  // Map shared B4 hit rectangles into the unchanged settings actions.
+  const int item=tpkhome::clockHit(x,y);
+  if(item<0)return;
+  if(item==8){clockOpen=false;return;}
+  const int xs[]={133,199,281,347,SND_PILL_X+1,BRI_PILL_X+1,LANG_PILL_X+1,233};
+  const int ys[]={210,210,210,210,LANG_PILL_Y+1,LANG_PILL_Y+1,LANG_PILL_Y+1,360};
+  x=xs[item];y=ys[item];
+#endif
   if (y >= 190 && y <= 248) {  // fila de botones +/-
     if (x >= 104 && x < 162) clockH = (clockH + 23) % 24;
     else if (x >= 170 && x < 228) clockH = (clockH + 1) % 24;
@@ -2635,7 +2684,84 @@ void renderCardProgress() {
   printT(ms);
 }
 
+#if BOARD_STACKCHAN
+static void stackNav(const char* middle,bool prev,bool next){
+  const tpkhome::Rect boxes[]={tpkhome::NAV_PREV,tpkhome::NAV_BACK,tpkhome::NAV_NEXT};
+  const char* labels[]={"<",middle,">"};
+  for(int i=0;i<3;i++){
+    auto b=boxes[i];bool enabled=i==1||(i==0?prev:next);
+    stackDialogBox(b,enabled?UI_WHITE:UI_TRACK,UI_INK);
+    stackDialogText(labels[i],b.x,b.y+11,b.w,2,enabled?UI_INK:0x8410);
+  }
+}
+static void stackRenderCard(){
+  gfx->fillScreen(UI_BG_DAY);
+  const auto& d=DEX_TBL[pet.speciesId];
+  char buf[80];
+  if(cardPage==0){
+    snprintf(buf,sizeof(buf),T(S_NAME_FMT),pet.shiny?"*":"",pet.nick[0]?pet.nick:dexName(pet.speciesId),pet.level());
+    stackDialogText(buf,10,12,446,3,d.accent);
+    if(pmd.loaded)drawPmdAct(PMD_IDLE,114,184,millis(),true,false,3);
+    else {const auto* th=thumbs.get(pet.speciesId);if(th&&th[0]<=80&&th[1]<=80&&th[0]&&th[1])drawThumb(th,74,80,1,false);}
+    if(pet.nick[0])stackDialogText(dexName(pet.speciesId),10,46,208,2,UI_INK);
+    snprintf(buf,sizeof(buf),T(S_STREAK_FMT),pet.streak,pet.bestStreak);
+    stackDialogText(buf,224,68,226,2,UI_INK);
+    snprintf(buf,sizeof(buf),"%s %u",T(S_VIN),pet.bond);
+    stackDialogText(buf,224,107,226,2,UI_INK);
+    const char* berry=!pet.berryKnown?T(S_BERRY_UNK):pet.lovesBerry(0)?T(S_BERRY_RED):pet.lovesBerry(1)?T(S_BERRY_BLUE):T(S_BERRY_GREEN);
+    snprintf(buf,sizeof(buf),T(S_INFO_FMT),berry,(unsigned long)(pet.ageMinutes/1440));
+    stackDialogText(buf,224,145,226,2,UI_INK);
+    auto b=tpkhome::CARD_RENAME;
+    stackDialogBox(b,UI_WHITE,UI_INK);stackDialogText(T(S_RENAME_HINT),b.x,b.y+10,b.w,2,UI_INK);
+  }else if(cardPage==1){
+    stackDialogText(T(S_BATTLE),12,12,442,3,UI_INK);
+    drawCardStat(58,T(S_STAT_ATK),pet.atkStat(),260,UI_BAR_BAD);
+    drawCardStat(95,T(S_STAT_DEF),pet.defStat(),260,0x4C98);
+    drawCardStat(132,T(S_STAT_SPE),pet.speStat(),260,UI_BAR_WARN);
+    drawCardStat(169,T(S_STAT_WGT),pet.weight,100,0xB3C8);
+    auto b=tpkhome::CARD_TRAIN;
+    stackDialogBox(b,UI_BAR_BAD,UI_INK);stackDialogText(T(S_TRAIN_STR),b.x,b.y+10,b.w,2,UI_WHITE);
+  }else if(cardPage==2){
+    int got=0;for(int i=0;i<MED_COUNT;i++)if(pet.hasMedal(1<<i))++got;
+    snprintf(buf,sizeof(buf),T(S_MEDALS_FMT),got,MED_COUNT);
+    stackDialogText(buf,12,12,442,3,UI_INK);
+    for(int i=0;i<MED_COUNT;i++){
+      tpkhome::Rect b={12+(i%2)*224,52+(i/2)*51,218,46};
+      bool earned=pet.hasMedal(1<<i);
+      stackDialogBox(b,earned?UI_BAR_OK:UI_TRACK,UI_INK);
+      stackDialogText(medalDesc(i),b.x,b.y+12,b.w,2,earned?UI_WHITE:UI_INK);
+    }
+  }else{
+    stackDialogText(T(S_PROGRESS),12,12,442,3,UI_INK);
+    snprintf(buf,sizeof(buf),T(S_LVL_FMT),pet.level());
+    stackDialogText(buf,12,47,442,4,UI_INK);
+    const int into=pet.ageMinutes%MINUTES_PER_LEVEL;
+    gfx->fillRoundRect(64,88,338,18,5,UI_TRACK);
+    int fill=334*into/MINUTES_PER_LEVEL;
+    if(fill)gfx->fillRoundRect(66,90,fill,14,4,UI_BAR_OK);
+    snprintf(buf,sizeof(buf),T(S_NEXT_LVL_FMT),MINUTES_PER_LEVEL-into,pet.level()+1);
+    stackDialogText(buf,12,116,442,2,UI_INK);
+    stackDialogText(T(S_EVO_LABEL),12,154,442,2,UI_TRACK);
+    const char* evo=T(S_FINAL_FORM);uint16_t color=UI_INK;
+    if(d.evolvesTo){
+      int needed=d.evolveLevel+pet.careMistakes;
+      if(pet.level()>=needed){bool ready=pet.lowestStat()>=40;evo=T(ready?S_EVO_READY:S_EVO_BLOCKED);color=ready?UI_BAR_OK:UI_BAR_BAD;}
+      else{snprintf(buf,sizeof(buf),T(S_EVO_IN_FMT),needed-pet.level());evo=buf;}
+    }
+    stackDialogText(evo,12,180,442,2,color);
+    snprintf(buf,sizeof(buf),T(S_MISTAKES_FMT),pet.careMistakes);
+    stackDialogText(buf,12,218,442,2,pet.careMistakes?UI_BAR_BAD:UI_INK);
+  }
+  stackNav("BACK",cardPage>0,cardPage<3);
+  char page[12];snprintf(page,sizeof(page),"%u/4",unsigned(cardPage+1));
+  stackDialogText(page,348,12,108,2,UI_TRACK);
+  flushUI();
+}
+#endif
 void renderCard() {
+#if BOARD_STACKCHAN
+  stackRenderCard();return;
+#endif
   gfx->fillScreen(RGB565_BLACK);
   gfx->fillCircle(CX, CY, 231, UI_BG_DAY);
   if (cardPage == 0) renderCardProfile();
@@ -2672,6 +2798,20 @@ void openKeyboard() {
 }
 
 void renderKeyboard() {
+#if BOARD_STACKCHAN
+  gfx->fillScreen(UI_BG_DAY);
+  stackDialogText(T(S_NAME),12,8,306,2,UI_INK);
+  stackDialogText(nameLen?nameBuf:"_",12,35,306,3,UI_INK);
+  auto cancel=tpkhome::KEY_CANCEL;
+  stackDialogBox(cancel,UI_TRACK,UI_INK);stackDialogText("X",cancel.x,cancel.y+9,cancel.w,2,UI_INK);
+  for(int i=0;i<30;i++){
+    auto b=tpkhome::keyboard(i);
+    char ch[2]={i<28?KB_KEYS[i]:'\0','\0'};
+    stackDialogBox(b,i>=28?UI_BAR_WARN:UI_WHITE,UI_INK);
+    stackDialogText(i<28?ch:i==28?"<-":"OK",b.x,b.y+10,b.w,3,UI_INK);
+  }
+  flushUI();return;
+#endif
   gfx->fillScreen(RGB565_BLACK);
   gfx->fillCircle(CX, CY, 231, UI_BG_DAY);
   gfx->setTextColor(UI_INK);
@@ -2708,11 +2848,17 @@ void keyboardTap(int16_t x, int16_t y) {
   // filtra ANTES de dividir: con x/y menores que KB_X/KB_Y la resta da negativo
   // y la division entera trunca hacia cero (no hacia -inf), asi que col/row
   // saldria 0 en vez de negativo y el filtro de abajo no lo detectaria
+#if BOARD_STACKCHAN
+  if(tpkhome::KEY_CANCEL.contains(x,y)){kbOpen=false;return;}
+  int i=tpkhome::keyboardHit(x,y);
+  if(i<0)return;
+#else
   if (x < KB_X || y < KB_Y) return;
   int col = (x - KB_X) / KB_W, row = (y - KB_Y) / KB_H;
   if (col >= KB_COLS || row >= 5) return;
   int i = row * KB_COLS + col;
   if (i >= 30) return;
+#endif
   if (i == 28) {  // borrar
     if (nameLen) nameBuf[--nameLen] = 0;
   } else if (i == 29) {  // OK
@@ -2748,6 +2894,35 @@ void drawThumb(const uint8_t *b, int x, int y, int s, bool sil) {
 }
 
 void renderGallery() {
+#if BOARD_STACKCHAN
+  if(galleryDetail){
+    gfx->fillScreen(UI_BG_DAY);
+    bool reg=pet.isRegistered(galleryDetail);
+    char head[48];snprintf(head,sizeof(head),"N.%03d %s%s",galleryDetail,
+      pet.isShinyRegistered(galleryDetail)?"*":"",reg?dexName(galleryDetail):"???");
+    stackDialogText(head,12,12,442,3,reg?DEX_TBL[galleryDetail].accent:UI_INK);
+    if(galleryPmd.loaded)drawPmdActM(galleryPmd,PMD_IDLE,CX,248,reg?millis():0,true,!reg,4);
+    else{const auto* t=thumbs.get(galleryDetail);if(t&&t[0]&&t[1]&&t[0]<=80&&t[1]<=80)drawThumb(t,CX-40,100,1,!reg);}
+    stackNav("BACK",false,false);flushUI();return;
+  }
+  if(!galleryDirty)return;
+  galleryDirty=false;gfx->fillScreen(UI_BG_DAY);
+  char head[48];snprintf(head,sizeof(head),T(S_POKEDEX_FMT),pet.registeredCount());
+  stackDialogText(head,12,8,330,3,UI_INK);
+  char page[16];snprintf(page,sizeof(page),"%d/10",galleryPage+1);
+  stackDialogText(page,344,12,108,2,UI_TRACK);
+  for(int i=0;i<16;i++){
+    int dex=galleryPage*16+i+1;if(dex>151)break;
+    auto b=tpkhome::galleryCell(i);
+    stackDialogBox(b,UI_WHITE,UI_TRACK);
+    const auto* t=thumbs.get(dex);
+    if(t&&t[0]&&t[1]&&t[0]<=42&&t[1]<=42)
+      drawThumb(t,b.x-14,b.y+(b.h-80)/2,1,!pet.isRegistered(dex));
+    char num[12];snprintf(num,sizeof(num),"%03d%s",dex,pet.isShinyRegistered(dex)?"*":"");
+    stackDialogText(num,b.x+42,b.y+13,b.w-42,2,pet.isRegistered(dex)?UI_INK:UI_TRACK);
+  }
+  stackNav("BACK",galleryPage>0,galleryPage<9);flushUI();return;
+#endif
   if (galleryDetail) {  // vista detalle: se redibuja siempre (animada)
     gfx->fillScreen(RGB565_BLACK);
     gfx->fillCircle(CX, CY, 231, UI_BG_DAY);
@@ -2824,6 +2999,20 @@ void renderGallery() {
 }
 
 void galleryTap(int16_t x, int16_t y) {
+#if BOARD_STACKCHAN
+  if(galleryDetail){
+    if(tpkhome::NAV_BACK.contains(x,y)){galleryDetail=0;galleryPmd.unload();galleryDirty=true;}
+    return;
+  }
+  if(tpkhome::NAV_BACK.contains(x,y)){galleryOpen=false;galleryPmd.unload();return;}
+  if(tpkhome::NAV_PREV.contains(x,y)){if(galleryPage>0){--galleryPage;galleryDirty=true;}return;}
+  if(tpkhome::NAV_NEXT.contains(x,y)){if(galleryPage<9){++galleryPage;galleryDirty=true;}return;}
+  int cell=tpkhome::galleryHit(x,y);
+  if(cell<0)return;
+  int16_t selected=galleryPage*16+cell+1;
+  if(selected>151)return;
+  galleryDetail=selected;galleryPmd.load(selected,pet.isShinyRegistered(selected));return;
+#endif
   if (galleryDetail) {  // volver a la rejilla
     galleryDetail = 0;
     galleryPmd.unload();

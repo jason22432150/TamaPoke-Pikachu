@@ -123,8 +123,11 @@ Actual FPS, memory use and visual fidelity still require hardware validation.
 B3 moves starter selection, eggs, feeding, bathing, evolution/farewell prompts,
 release and choice dialogs, and ceremonies into the landscape viewport.
 Shared logical hit rectangles are checked against visible physical samples;
-page changes and stale presentation cancel contacts until release. Legacy
-card, gallery, keyboard, clock and minigames retain compatibility geometry.
+page changes and stale presentation cancel contacts until release. B4 adds landscape card/profile, stats, medals and progress pages; the 16-cell
+Dex grid with explicit previous/next/back, detail view, clock/settings and
+30-key ASCII nickname keyboard use shared hit rectangles. Gallery page
+indices are part of the presented touch token. Existing settings and save
+handlers are reused. Minigames retain compatibility geometry.
 Actual multilingual text fit, animation and touch usability require hardware tests. Display and touch share the geometry; changes
 cancel in-flight gestures. Legacy side panels remain in those screens.
 No partition, NVS format, eFuse, motor, or OTA change. Hardware acceptance and

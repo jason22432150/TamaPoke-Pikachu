@@ -65,6 +65,26 @@ int main(){
   a.awake=false;assert(home.update({10,210,true},a,1140,true).wake);
   a.awake=true;assert(home.update({10,210,false},a,1160,true).action==Key::None);
   using tpkhome::Page;
+  bool gallerySeen[16]={},keyboardSeen[30]={},clockSeen[9]={};
+  for(int y=HOME_Y;y<HOME_BOTTOM;y++)for(int x=0;x<HOME_W;x++){
+    const auto p=homeToLogical({int16_t(x),int16_t(y),true});
+    int g=tpkhome::galleryHit(p.x,p.y),k=tpkhome::keyboardHit(p.x,p.y),c=tpkhome::clockHit(p.x,p.y);
+    assert(g>=-1&&g<16&&k>=-1&&k<30&&c>=-1&&c<9);
+    if(g>=0)gallerySeen[g]=true;
+    if(k>=0)keyboardSeen[k]=true;
+    if(c>=0)clockSeen[c]=true;
+    if(tpkhome::NAV_BACK.contains(p.x,p.y)||tpkhome::NAV_PREV.contains(p.x,p.y)||tpkhome::NAV_NEXT.contains(p.x,p.y))assert(g<0);
+  }
+  for(bool seen:gallerySeen)assert(seen);
+  for(bool seen:keyboardSeen)assert(seen);
+  for(bool seen:clockSeen)assert(seen);
+  assert(tpkhome::keyboardHit(82,70)==-1);
+  assert(tpkhome::galleryHit(119,43)==-1);
+  TouchRouter paging;
+  paging.update({0,0,false},a,0,true,32);
+  assert(paging.update({160,100,true},a,10,true,32).forward);
+  assert(paging.update({160,100,true},a,20,true,33).cancel);
+  assert(!paging.update({160,100,false},a,30,true,33).forward);
   for(Page page:{Page::Starter,Page::Feed,Page::Release,Page::EvolveChoice,Page::FarewellChoice}){
     bool seen[4]={};
     const int count=page==Page::Starter?3:page==Page::Feed?4:2;
