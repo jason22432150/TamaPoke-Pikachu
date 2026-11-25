@@ -144,17 +144,32 @@ ELF and candidate, not a later rebuild. A review is not a hardware test.
 The approved-build set remains empty until the outstanding write-path
 and first-boot risks are reviewed for an exact candidate.
 
+### Dedicated TamaPoke assets
+
+The partition name, subtype, address and size remain unchanged. TPAS-v1 is
+a raw read-only archive, not a mounted filesystem. The full 4 MiB image
+contains the normal and shiny animations of the three starter evolution
+lines and Pikachu/Raichu, plus all 151 gallery thumbnails, with unused bytes
+set to 0xff. The source is the repository's verified CC BY-NC PMD sprite
+pack. The complete pack stays on microSD; SD sprite files take precedence,
+with flash assets and existing embedded fallback when unavailable.
+Serial ASSETINFO reports the archive header status and capacity.
+No runtime asset write/format command is added. Old candidates without
+the assets image must not be used with this installer.
+
 ## Future approved installation (not yet authorized)
 
 Once a separately reviewed build is approved by maintainers, the installer
-will require the exact source commit and all four image digests, explicit
+will require the exact source commit and all five image digests, explicit
 acknowledgement of download mode, same-device identity and compatible layout.
 It will require exact existing table bytes before writing and will not rewrite
-the partition table. Only bootloader (0x0), OTA selection (0xd000) and ota_0
-application (0x20000) are written; the OTA selection is reset to erased bytes.
-NVS, PHY init, ota_1, assets and coredump are not directly erased by these
-writes. First boot can still change data in Flash. The installer reads back
-all four image regions and compares eFuse summaries before proceeding. No automatic hard
+the partition table. Only bootloader (0x0), OTA selection (0xd000), ota_0 application (0x20000),
+and the complete 4 MiB TamaPoke assets image (0xa00000) are written.
+The OTA selection is reset to erased bytes. All factory assets are replaced,
+including unused space (0xff); do not expect the original firmware to work
+with the new assets. NVS, PHY init, ota_1 and coredump are not directly erased
+by these writes. First boot can still change data in Flash. The installer reads back
+all five image regions and compares eFuse summaries before proceeding. No automatic hard
 reset is requested. A hardware-specific download-mode/USB reset procedure
 must be validated to ensure that the application cannot boot prematurely.
 After an explicitly supervised first boot, manually re-enter ROM download mode;

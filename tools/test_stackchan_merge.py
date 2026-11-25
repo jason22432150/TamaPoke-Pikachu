@@ -4,7 +4,7 @@ import unittest
 import json
 from stackchan_merge import assemble,create,verify
 from stackchan_package import package
-from test_stackchan_review import table,image
+from test_stackchan_review import image,table,asset_fixture
 
 class MergeTests(unittest.TestCase):
     def test_roundtrip(self):
@@ -14,6 +14,7 @@ class MergeTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
+            asset_fixture(bins)
             candidate=root/"candidate"
             package(bins,candidate,"a"*40)
             data,report=assemble(candidate)

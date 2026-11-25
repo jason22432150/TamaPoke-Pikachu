@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import sys
 from stackchan_package import verify_package
+from stackchan_assets import NAME as ASSETS_NAME, SIZE as ASSETS_SIZE
 
 FLASH_BYTES = 16*1024*1024
 SECTOR = 4096
@@ -32,11 +33,15 @@ def assemble(candidate):
         raise ValueError("invalid initial app slot")
     if ota["type"]!=1 or ota["subtype"]!=0 or ota["size"]!=8192:
         raise ValueError("invalid OTA region")
+    assets=by_label["assets"]
+    if (assets["type"],assets["subtype"],assets["offset"],assets["size"])!=(1,130,0xa00000,ASSETS_SIZE):
+        raise ValueError("unexpected assets partition")
     specs=[
         ("TamaPoke.ino.bootloader.bin",0,0x8000),
         ("TamaPoke.ino.partitions.bin",0x8000,0x1000),
         ("ota_data_initial.bin",ota["offset"],ota["size"]),
         ("TamaPoke.ino.bin",app["offset"],app["size"]),
+        (ASSETS_NAME,assets["offset"],assets["size"]),
     ]
     evidence={p["name"]:p for p in manifest["files"]}
     evidence[manifest["initial_ota"]["name"]]=manifest["initial_ota"]

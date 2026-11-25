@@ -4,7 +4,7 @@ import unittest
 from stackchan_backup import capture
 from stackchan_impact import impact,overlaps
 from stackchan_package import package
-from test_stackchan_review import table,image
+from test_stackchan_review import image,table,asset_fixture
 from test_stackchan_preflight import runner
 
 class ImpactTests(unittest.TestCase):
@@ -20,6 +20,7 @@ class ImpactTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
+            asset_fixture(bins)
             candidate=root/"candidate"
             package(bins,candidate,"a"*40)
             result=impact(factory,current,candidate)

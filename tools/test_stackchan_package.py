@@ -5,7 +5,7 @@ import json
 import struct
 import unittest
 from stackchan_package import package,verify_package,combine,app_idf_version,IDF_PIN,SOURCE_FILES,require_clean_efuse_screen
-from test_stackchan_review import table,image
+from test_stackchan_review import image,table,asset_fixture
 
 class PackageTests(unittest.TestCase):
     def test_roundtrip_and_failures(self):
@@ -15,6 +15,7 @@ class PackageTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
+            asset_fixture(bins)
             out=root/"candidate"
             m=package(bins,out,"a"*40)
             self.assertEqual(verify_package(out),m)
@@ -54,6 +55,7 @@ class PackageTests(unittest.TestCase):
             (bins/"TamaPoke.ino.bin").write_bytes(app)
             (bins/"TamaPoke.ino.bootloader.bin").write_bytes(old_boot)
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
+            asset_fixture(bins)
             candidate=root/"candidate";package(bins,candidate,"a"*40)
             src=root/"source";src.mkdir()
             for name in SOURCE_FILES:

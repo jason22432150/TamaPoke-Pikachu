@@ -6,6 +6,10 @@ import unittest
 from stackchan_backup import TABLE_BYTES,capture
 from stackchan_review import expected_layout,firmware_evidence,review_archive,security_state,validate_esp_image,initial_ota_data
 from test_stackchan_backup import BackupTests
+from stackchan_assets import NAME, IDS, build_image
+
+def asset_fixture(bins):
+    (bins/NAME).write_bytes(build_image({i:(b'TPK2abc' if i else b'TPTHabcdef') for i in IDS}))
 
 def image(payload=b"abcd", digest=True):
     header=bytearray(24)
@@ -47,9 +51,10 @@ class ReviewTests(unittest.TestCase):
             out=Path(tmp)
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (out/name).write_bytes(image())
+            asset_fixture(out)
             part=out/"TamaPoke.ino.partitions.bin"
             part.write_bytes(table().ljust(0x1000,b"\xff"))
-            self.assertEqual(len(firmware_evidence(out,"a"*40)["files"]),3)
+            self.assertEqual(len(firmware_evidence(out,"a"*40)["files"]),4)
             for invalid in (table()+b"\x00", table().ljust(0x1001,b"\xff"), table()[:-1]):
                 part.write_bytes(invalid)
                 with self.assertRaises(ValueError):
@@ -88,13 +93,14 @@ class ReviewTests(unittest.TestCase):
             out=Path(tmp)
             app=out/"TamaPoke.ino.bin"
             boot=out/"TamaPoke.ino.bootloader.bin"
+            asset_fixture(out)
             part=out/"TamaPoke.ino.partitions.bin"
             app.write_bytes(image())
             boot.write_bytes(image())
             part.write_bytes(table())
             r=firmware_evidence(out,"a"*40)
             self.assertFalse(r["flash_authorized"])
-            self.assertEqual(len(r["files"]),3)
+            self.assertEqual(len(r["files"]),4)
             app.write_bytes(b"\0")
             with self.assertRaises(ValueError):firmware_evidence(out,"a"*40)
             app.write_bytes(image())
