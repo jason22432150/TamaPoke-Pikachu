@@ -32,7 +32,7 @@ The Arduino_GFX RAM canvas is transmitted through M5GFX to a 240x240 viewport.
 It uses the dedicated tpk-k151-game namespace, opt-in START and SDWRITE ON,
 SPI SD with no auto-format, M5Unified RTC/power/speaker APIs. The Waveshare
 sleep GPIO path is excluded. Runtime and all interactions remain unverified;
-no full game artifact is published. Motor/RGB and native widescreen redesign
+the full game is now published only as an unapproved candidate. Motor/RGB and native widescreen redesign
 are outside this target. Do not flash before security/layout review.
 
 The first full K151 game build passed at d60d4a0 (Actions run 45306960321):
@@ -329,7 +329,12 @@ The observed K151 layout reserves NVS at 0x9000 (16 KiB), OTA data at
 0xd000, PHY init at 0xf000, ota_0 at 0x20000 and ota_1 at 0x510000,
 assets at 0xa00000 and coredump at 0xe00000. The installer preserves the
 existing partition table, requires exact matching bytes, and writes only
-bootloader, OTA selection and ota_0 when a build is independently approved.
+bootloader, OTA selection, ota_0 and the full 4 MiB TamaPoke assets image
+when a build is independently approved. All original assets will be replaced;
+keeping ota_1 does not guarantee original firmware functionality. The raw
+TPAS-v1 archive has 22 normal/shiny animations (11 species) plus all gallery
+thumbnails, and is read-only at runtime. microSD retains full sprite support.
+Use ASSETINFO after START to report the internal archive header status.
 Do not use old experimental-layout artifacts or merged images for installation.
 
 See [ALPHA_INSTALL.md](ALPHA_INSTALL.md) for macOS preparation and read-only

@@ -27,6 +27,11 @@ class PackageTests(unittest.TestCase):
             ota.write_bytes(b"\0"+b"\xff"*8191)
             with self.assertRaises(ValueError):verify_package(out)
             ota.write_bytes(b"\xff"*8192)
+            assets=out/"tamapoke_assets.bin"
+            original=assets.read_bytes()
+            assets.write_bytes(original[:-1]+b"\x00")
+            with self.assertRaises(ValueError):verify_package(out)
+            assets.write_bytes(original)
             extra=out/"unexpected.bin";extra.write_bytes(b"x")
             with self.assertRaises(ValueError):verify_package(out)
             extra.unlink()

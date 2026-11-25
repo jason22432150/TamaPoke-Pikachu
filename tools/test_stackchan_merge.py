@@ -22,6 +22,9 @@ class MergeTests(unittest.TestCase):
             self.assertEqual(data[0x8000:0x8000+len(table())],table())
             self.assertEqual(data[0x9000:0x20000],b"\xff"*0x17000)
             self.assertEqual(data[0x20000:0x20000+len(image())],image())
+            self.assertEqual(len(data),0xe00000)
+            self.assertEqual(data[0xa00000:0xe00000],(candidate/'tamapoke_assets.bin').read_bytes())
+            self.assertEqual(report['regions'][-1]['capacity'],0x400000)
             self.assertEqual(len(data)%4096,0)
             self.assertFalse(report["flash_authorized"])
             out=root/"merged"

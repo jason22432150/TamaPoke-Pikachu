@@ -25,7 +25,7 @@ Do not include credentials, MAC or private flash images in public issues.
 | LCD | Correct red/green/blue, orientation and full viewport, no tearing |
 | Touch | All four center corners; all five side buttons; crossing cancels; wake-only |
 | Game | Starter, egg, feed, bath, light, play, strength, evolution, farewell |
-| Assets | Pikachu/Raichu normal and shiny fallback; SD sprites when present |
+| Assets | ASSETINFO, no-SD starter evolution lines and Pikachu/Raichu normal/shiny, all gallery thumbnails, SD precedence and embedded fallback |
 | Languages | All nine; TW names, menus, medals, no missing glyph or clipped text |
 | Audio | All cues, volume, mute, sleeping and wake |
 | RTC | Time read, time set, reboot persistence and offline progression |
