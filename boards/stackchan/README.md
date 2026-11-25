@@ -127,7 +127,12 @@ page changes and stale presentation cancel contacts until release. B4 adds lands
 Dex grid with explicit previous/next/back, detail view, clock/settings and
 30-key ASCII nickname keyboard use shared hit rectangles. Gallery page
 indices are part of the presented touch token. Existing settings and save
-handlers are reused. Minigames retain compatibility geometry.
+handlers are reused. B5 moves both minigames to the same landscape viewport:
+rectangular ball-wall physics, visible floor, separated score/lives/exit,
+10-second strength training with a generous bag hit region, and result/back
+controls. K151 scores on press (one hit per contact, wake-only when dimmed),
+not release. Saves/records are retained; difficulty and rapid-touch capture
+need physical validation and cross-layout score comparability is unverified.
 Actual multilingual text fit, animation and touch usability require hardware tests. Display and touch share the geometry; changes
 cancel in-flight gestures. Legacy side panels remain in those screens.
 No partition, NVS format, eFuse, motor, or OTA change. Hardware acceptance and

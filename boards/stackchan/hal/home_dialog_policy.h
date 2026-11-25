@@ -3,7 +3,8 @@
 namespace tpkhome {
 enum class Page:uint8_t { Compat, Starter, Egg, Pet, Feed, Release, EvolveChoice,
   FarewellChoice, Ceremony, Bath, EvolvePrompt, FarewellPrompt, RunawayPrompt, GalleryGrid, GalleryDetail,
-  CardProfile, CardStats, CardMedals, CardProgress, Clock, Keyboard };
+  CardProfile, CardStats, CardMedals, CardProgress, Clock, Keyboard,
+  BallGame, BallResult, Training, TrainingResult };
 constexpr bool landscape(Page p){return p!=Page::Compat;}
 constexpr bool modal(Page p){return p==Page::Feed||p==Page::Release||
   p==Page::EvolveChoice||p==Page::FarewellChoice;}

@@ -21,6 +21,7 @@
 #if BOARD_STACKCHAN
 #include "game_display.h"
 #include "home_dialog_policy.h"
+#include "minigame_policy.h"
 #include "game_body.h"
 #include "game_sidebar.h"
 #include "game_perf.h"
@@ -524,7 +525,8 @@ static tpkhome::Page stackHomePage(){
   using tpkhome::Page;
   if(pet.awaitingStarter())return Page::Starter;
   if(galleryOpen)return galleryDetail?Page::GalleryDetail:Page::GalleryGrid;
-  if(gameOpen||sackOpen)return Page::Compat;
+  if(gameOpen)return gameOverUntil?Page::BallResult:Page::BallGame;
+  if(sackOpen)return sackOverUntil?Page::TrainingResult:Page::Training;
   if(kbOpen)return Page::Keyboard;
   if(clockOpen)return Page::Clock;
   if(cardOpen)return static_cast<Page>(uint8_t(Page::CardProfile)+(cardPage>3?3:cardPage));
@@ -1099,7 +1101,25 @@ void handleTouch() {
   }
 #endif
 
-#if !BOARD_AMOLED_175C
+#if BOARD_STACKCHAN
+  // One press per contact, against the last presented ball position. No
+  // release-time race, drag scoring or long-press into a different screen.
+  if(gameOpen||sackOpen){
+    if(pressed&&!wasPressed){
+      bool wakeOnly=screenOff||dimStage>0;
+      screenOff=false;wakeUI();
+      if(!wakeOnly){
+        if(gameOpen)gameTap(x,y);
+        else if(sackOverUntil){
+          if(tpkmini::RESULT_BACK.contains(x,y))sackOpen=false;
+        }else if(tpkmini::EXIT.contains(x,y))sackOpen=false;
+        else if(tpkmini::BAG_HIT.contains(x,y))sackTap();
+      }
+    }
+    wasPressed=pressed;
+    return;
+  }
+#elif !BOARD_AMOLED_175C
   // Original board: retain its existing touch/exit policy.
   if (sackOpen) {
     if (pressed && !wasPressed) {
@@ -1896,7 +1916,11 @@ void startGame() {
 
 void respawnBall() {
   ballX = 150 + random(166);
-  ballY = 96;
+#if BOARD_STACKCHAN
+  ballY=tpkmini::SPAWN_Y;
+#else
+  ballY=96;
+#endif
   float sp = 1.6f + gameScore * 0.05f;  // mas viva segun avanzas
   if (sp > 4.0f) sp = 4.0f;
   ballVX = random(2) ? sp : -sp;
@@ -1904,6 +1928,13 @@ void respawnBall() {
 }
 
 void gameTap(int16_t x, int16_t y) {
+#if BOARD_STACKCHAN
+  if(gameOverUntil){if(tpkmini::RESULT_BACK.contains(x,y))gameOpen=false;return;}
+  if(tpkmini::EXIT.contains(x,y)){gameOpen=false;return;}
+  float dx=ballX-x;
+  if(tpkmini::hitBall(ballX,ballY,x,y)){
+    gameScore=tpkmini::nextScore(gameScore);
+#else
   if (gameOverUntil) return;
   if (y < 72) {  // tocar la cabecera = abandonar sin premio
     gameOpen = false;
@@ -1912,6 +1943,7 @@ void gameTap(int16_t x, int16_t y) {
   float dx = ballX - x, dy = ballY - y;
   if (dx * dx + dy * dy < 74 * 74) {  // toque a la bola!
     gameScore++;
+#endif
     sfxPlay(SFX_PLAY);
     // golpe mas suave: impulso moderado que crece poco a poco con la puntuacion
     float lift = 6.6f + (gameScore > 16 ? 3.5f : gameScore * 0.22f);
@@ -1942,6 +1974,9 @@ void stepGame() {
   ballVY += grav * k;
   ballX += ballVX * k;
   ballY += ballVY * k;
+#if BOARD_STACKCHAN
+  if(tpkmini::walls(ballX,ballY,ballVX,ballVY)){
+#else
   // rebote en la pared circular
   float dx = ballX - CX, dy = ballY - CY;
   float d = sqrtf(dx * dx + dy * dy);
@@ -1956,6 +1991,7 @@ void stepGame() {
     ballY = CY + ny * 205;
   }
   if (ballY > 384) {  // al suelo
+#endif
     if (++gameMisses >= 3) {
       gameNewHi = (gameScore > pet.gameHi);
       pet.playResult(gameScore);  // actualiza el record y da felicidad
@@ -1995,6 +2031,16 @@ void sackTap() {
 }
 
 void drawGameScene();  // prototipo (definida mas abajo)
+#if BOARD_STACKCHAN
+static void stackMiniExit(uint16_t ink){
+  auto b=tpkmini::EXIT;stackDialogBox(b,UI_WHITE,ink);
+  stackDialogText("EXIT",b.x,b.y+14,b.w,2,UI_INK);
+}
+static void stackMiniBack(){
+  auto b=tpkmini::RESULT_BACK;stackDialogBox(b,UI_WHITE,UI_INK);
+  stackDialogText("BACK",b.x,b.y+16,b.w,2,UI_INK);
+}
+#endif
 
 void renderSack() {
   uint32_t now = millis();
@@ -2012,6 +2058,16 @@ void renderSack() {
 #endif
       return;
     }
+#if BOARD_STACKCHAN
+    char result[64];
+    snprintf(result,sizeof(result),T(S_HITS_FMT),sackHits);
+    stackDialogText(result,12,48,442,4,ink);
+    snprintf(result,sizeof(result),T(S_STR_GAIN_FMT),sackGain);
+    stackDialogText(result,12,111,442,3,UI_BAR_BAD);
+    snprintf(result,sizeof(result),T(S_RECORD_FMT),pet.strHi);
+    stackDialogText(sackNewHi&&sackHits?T(S_NEW_RECORD):result,12,172,442,2,ink);
+    stackMiniBack();flushUI();return;
+#endif
     char b[20];
     snprintf(b, sizeof(b), T(S_HITS_FMT), sackHits);
     gfx->setTextColor(ink);
@@ -2064,6 +2120,9 @@ void renderSack() {
   sackShake *= 0.84f;
   int off = (int)(sackShake * sinf(now * 0.05f));
   int sx = CX + off, top = 86, sy = 150;
+#if BOARD_STACKCHAN
+  top=tpkmini::BAG_TOP;
+#endif
   gfx->fillRect(CX - 3, 56, 6, top - 56, ink);          // gancho/cuerda
   gfx->fillRect(sx - 4, top - 30, 8, 34, ink);          // cadena
   gfx->fillRoundRect(sx - 42, top, 84, 150, 26, C565(0xb5, 0x3a, 0x3a));  // saco
@@ -2071,6 +2130,17 @@ void renderSack() {
   gfx->drawRoundRect(sx - 42, top, 84, 150, 26, ink);
   gfx->fillRect(sx - 42, top + 70, 84, 4, C565(0x7e, 0x28, 0x28));        // costura
 
+#if BOARD_STACKCHAN
+  stackMiniExit(ink);
+  char hits[16];snprintf(hits,sizeof(hits),"%u",unsigned(sackHits));
+  stackDialogText(hits,12,14,308,4,ink);
+  stackDialogText(T(S_HIT_FAST),12,235,442,2,ink);
+  const uint32_t leftMs=sackUntil-now;
+  gfx->fillRoundRect(48,275,370,20,5,UI_TRACK);
+  int remain=int(370UL*leftMs/10000);
+  if(remain>2)gfx->fillRoundRect(48,275,remain,20,5,UI_BAR_OK);
+  flushUI();return;
+#endif
   // contador de golpes
   char buf[8];
   snprintf(buf, sizeof(buf), "%u", sackHits);
@@ -2114,7 +2184,7 @@ void drawGameScene() {
   else if (hh < 8) { top = C565(0xd1, 0x6a, 0x86); bot = C565(0xf3, 0xb8, 0x7c); }
   else if (hh < 18){ top = C565(0x8f, 0xc8, 0xea); bot = C565(0xdc, 0xee, 0xe6); }
   else             { top = C565(0xc7, 0x5a, 0x4a); bot = C565(0xf0, 0xae, 0x64); }
-  int hor = 376;
+  int hor = BOARD_STACKCHAN ? 268 : 376;
   for (int y = 0; y < hor; y += 8)
     gfx->fillRect(0, y, 466, 8, lerp565(top, bot, y, hor));
   if (night)
@@ -2138,6 +2208,15 @@ void renderGame() {
       gameOpen = false;
       return;
     }
+#if BOARD_STACKCHAN
+    char result[64];
+    snprintf(result,sizeof(result),T(S_SCORE_FMT),gameScore);
+    stackDialogText(result,12,48,442,4,ink);
+    snprintf(result,sizeof(result),T(S_RECORD_FMT),pet.gameHi);
+    stackDialogText(gameNewHi&&gameScore?T(S_NEW_RECORD):result,12,111,442,3,ink);
+    stackDialogText(T(gameScore>=10?S_GREAT_JOY:S_PLUS_JOY),12,172,442,2,ink);
+    stackMiniBack();flushUI();return;
+#endif
     char buf[22];
     snprintf(buf, sizeof(buf), T(S_SCORE_FMT), gameScore);
     gfx->setTextColor(ink);
@@ -2167,6 +2246,18 @@ void renderGame() {
   drawGameScene();
   stepGame();
 
+#if BOARD_STACKCHAN
+  // Score, record, lives and exit occupy the strip above the bounce field.
+  stackMiniExit(ink);
+  char score[16];snprintf(score,sizeof(score),"%u",unsigned(gameScore));
+  stackDialogText(score,12,10,108,4,ink);
+  char record[32];snprintf(record,sizeof(record),T(S_REC_FMT),pet.gameHi);
+  stackDialogText(record,118,13,216,2,ink);
+  for(int i=0;i<3;i++){
+    if(i<3-gameMisses)gfx->fillCircle(194+i*27,47,7,UI_BAR_BAD);
+    else gfx->drawCircle(194+i*27,47,7,ink);
+  }
+#else
   // marcador, record y vidas
   char buf[8];
   snprintf(buf, sizeof(buf), "%u", gameScore);
@@ -2186,18 +2277,19 @@ void renderGame() {
     if (i < 3 - gameMisses) gfx->fillCircle(180 + i * 28, 104, 6, UI_BAR_BAD);
     else gfx->drawCircle(180 + i * 28, 104, 6, UI_TRACK);
   }
+#endif
 
   if (pmd.loaded) {
     uint8_t act = (ballX > gamePetX + 4) ? PMD_WALKR : (ballX < gamePetX - 4) ? PMD_WALKL : PMD_IDLE;
     if (!pmd.has(act)) act = PMD_IDLE;
-    drawPmdAct(act, (int)gamePetX, 394, millis(), true, false, 3);
+    drawPmdAct(act, (int)gamePetX, BOARD_STACKCHAN ? 305 : 394, millis(), true, false, 3);
   } else if (mon.loaded) {
     int s = (mon.h * 2 > 130) ? 1 : 2;
     int w = mon.w * s, h = mon.h * s;
     uint16_t fm = mon.frameMs ? mon.frameMs : 100;
     uint16_t fi = (millis() / fm) % mon.frames;
     const uint8_t *fr = mon.data + (uint32_t)fi * mon.w * mon.h;
-    int px = (int)gamePetX - w / 2, py = 394 - h;
+    int px = (int)gamePetX - w / 2, py = (BOARD_STACKCHAN ? 305 : 394) - h;
     for (int r = 0; r < mon.h; r++) {
       const uint8_t *row = fr + r * mon.w;
       forRuns(mon.w, [&](int c) { return indexedKey(row[c], false); },

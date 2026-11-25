@@ -1,5 +1,6 @@
 #include "hal/sidebar_policy.h"
 #include "hal/home_dialog_policy.h"
+#include "hal/minigame_policy.h"
 #include <cassert>
 #include <initializer_list>
 using namespace tpkside;
@@ -65,6 +66,31 @@ int main(){
   a.awake=false;assert(home.update({10,210,true},a,1140,true).wake);
   a.awake=true;assert(home.update({10,210,false},a,1160,true).action==Key::None);
   using tpkhome::Page;
+  static_assert(tpkhome::landscape(Page::BallGame)&&tpkhome::landscape(Page::Training),"landscape games");
+  float bx=0,by=140,vx=-4,vy=0;
+  assert(!tpkmini::walls(bx,by,vx,vy)&&bx==tpkmini::LEFT&&vx>0);
+  bx=500;vx=4;
+  assert(!tpkmini::walls(bx,by,vx,vy)&&bx==tpkmini::RIGHT&&vx<0);
+  bx=200;by=0;vy=-4;
+  assert(!tpkmini::walls(bx,by,vx,vy)&&by==tpkmini::CEILING&&vy>0);
+  by=tpkmini::FLOOR+1;assert(tpkmini::walls(bx,by,vx,vy));
+  assert(tpkmini::hitBall(233,150,233,150));
+  assert(!tpkmini::hitBall(233,150,0,150));
+  assert(!tpkmini::hitBall(390,88,390,40));
+  assert(tpkmini::nextScore(254)==255&&tpkmini::nextScore(255)==255);
+  bool exitSeen=false,bagSeen=false,backSeen=false;
+  for(int y=HOME_Y;y<HOME_BOTTOM;y++)for(int x=0;x<HOME_W;x++){
+    auto p=homeToLogical({int16_t(x),int16_t(y),true});
+    bool exit=tpkmini::EXIT.contains(p.x,p.y),bag=tpkmini::BAG_HIT.contains(p.x,p.y);
+    assert(!(exit&&bag));exitSeen|=exit;bagSeen|=bag;
+    backSeen|=tpkmini::RESULT_BACK.contains(p.x,p.y);
+  }
+  assert(exitSeen&&bagSeen&&backSeen);
+  TouchRouter game;
+  game.update({0,0,false},a,0,true,uint8_t(Page::BallGame));
+  assert(game.update({160,110,true},a,10,true,uint8_t(Page::BallGame)).forward);
+  assert(game.update({160,110,true},a,20,true,uint8_t(Page::BallResult)).cancel);
+  assert(!game.update({160,110,false},a,30,true,uint8_t(Page::BallResult)).forward);
   bool gallerySeen[16]={},keyboardSeen[30]={},clockSeen[9]={};
   for(int y=HOME_Y;y<HOME_BOTTOM;y++)for(int x=0;x<HOME_W;x++){
     const auto p=homeToLogical({int16_t(x),int16_t(y),true});
