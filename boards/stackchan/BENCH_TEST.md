@@ -36,6 +36,16 @@ Installer approval commit 111ee286ab7350821f7ce8062d673c243c1416d3.
   and RGB OFF remain unverified.
 - Motion preview OFF acknowledged, prior BODY CHECK preview=0 active=0
   hardware=disabled. Preview ON and reaction behavior remain NOT RUN.
+- Preliminary telemetry (owner report, 2026-11-26): 73 paired windows,
+  coverage 368640 ms, one boot marker, no malformed, missing, duplicate
+  or unmatched records; reset reason 11 (ESP_RST_USB). Heap median
+  drop 4 bytes, PSRAM and largest-block median drops zero. No memory
+  decline review flags. Active/game/dim FPS 7.20/11.61/2.00; active
+  maximum loop gap 601026 us, 1632 gaps >=100 ms; game 29, dim 30.
+  Active max render 133853 us includes flush (max 32127 us).
+  No off-screen windows. Report is review-required solely for duration;
+  60-minute continuous telemetry and visual acceptance remain outstanding.
+  Do not infer a specific cause for the maximum loop gap from aggregates.
 - NOT RUN or not yet reported: detailed gameplay, all UI screens, audio,
   RTC retention, SD sprite reads, RGB visual behavior, persistence, motion preview ON,
   60-minute stability and final post-game eFuse comparison.
