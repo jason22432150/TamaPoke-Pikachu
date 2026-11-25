@@ -25,14 +25,19 @@ Installer approval commit 111ee286ab7350821f7ce8062d673c243c1416d3.
   largest internal block 253940, free PSRAM 7943376 / 8388608,
   largest PSRAM block 7864308, CPU 240 MHz, reset 11 (ESP_RST_USB).
   This is not a continuous stability or leak test.
-- SDINFO total=0 used=0 with no reported inserted card; actual SD mount
-  and sprite loading remain NOT RUN.
+- PASS (owner report): TeamGroup 16 GB FAT32 microSD installed and normal
+  boot confirmed. Initial no-boot report was withdrawn by owner as an
+  operator mistake, not a reproduced firmware defect. SDINFO returned
+  total=15921446912 used=8192; LS returned DONE without entries.
+  Mount/capacity read passed; empty or absent /mons directory is expected
+  on an unprovisioned card. Actual file reads and sprite loading remain
+  NOT RUN. No format or firmware update needed.
 - RGB ON request accepted, BODY CHECK rgb=1. Visible LED output, transitions
   and RGB OFF remain unverified.
 - Motion preview OFF acknowledged, prior BODY CHECK preview=0 active=0
   hardware=disabled. Preview ON and reaction behavior remain NOT RUN.
 - NOT RUN or not yet reported: detailed gameplay, all UI screens, audio,
-  RTC retention, SD media, RGB visual behavior, persistence, motion preview ON,
+  RTC retention, SD sprite reads, RGB visual behavior, persistence, motion preview ON,
   60-minute stability and final post-game eFuse comparison.
   Physical motors remain disabled.
 
