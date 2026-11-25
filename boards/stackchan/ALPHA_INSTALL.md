@@ -3,9 +3,11 @@
 StackChan installation is local only. Do not use the upstream Waveshare web
 installer, Chrome/Edge Web Serial, or any browser-based flashing workflow.
 
-**Status: one exact archived candidate is eligible for supervised ROM-only Flash installation.**
-Do not boot it until the operator has completed Flash readback and reviewed the
-before/after-write eFuse comparison. All other candidates remain NOT FOR FLASH.
+**Status: no candidate currently approved for a new Flash write.**
+The original bb5234e candidate was installed and failed to boot with a GDMA/SPI
+panic. Its installation approval is withdrawn; historical read-only checkpoint
+verification remains supported. The DMA fix at 871e6d8 passed build CI and
+requires exact archived artifact review before a new write.
 Do not bypass the installer approval gate, run a manual flash command or use force. No factory restoration
 or NVS migration is provided. Physical motors and online OTA stay disabled.
 
@@ -22,12 +24,12 @@ Install Python 3.11+ and Git using their official distribution. In Terminal:
 This downloads the experimental branch and isolates the exact serial tool
 version from your system Python. It does not connect to the device.
 
-For the supervised installation use only the archived source-bootloader
+Historical installation record (do not reinstall): the archived source-bootloader
 paired candidate from run 45554127667, artifact 14995636144, source commit
 bb5234ef25ca5903309028b76afcbc29dc414011. Extract it into a separate
 private directory. Its original NOT-FOR-FLASH label and manifest flags are
 retained as historical build evidence. The newer installer allowlist is
-the only installation gate; a new green build is not automatically approved.
+the only installation gate; this tuple has now been withdrawn. A new green build is not automatically approved.
 Do not use the Arduino-prebuilt-bootloader candidate or any Assets-replacement
 candidate. Never substitute a new rebuild.
 
@@ -87,7 +89,11 @@ full security report or eFuse snapshot. Never modify the counter.
 The owner reported a successful bb5234e Flash write/readback and unchanged
 observable eFuse summaries (no unreadable named fields), then repeated
 GDMA/SPI initialization failures and LoadProhibited before START.
-The first-boot eFuse checkpoint is still required. No motor activity was
+The owner subsequently completed the after-boot checkpoint: the before/after-write
+and after-write/after-boot reports both showed observable-summary-unchanged,
+changed_fields empty, and zero unreadable named fields. This is failed-boot
+hardware evidence, not successful game initialization or proof of all reserved
+bits. No motor activity was
 observed. M5GFX 0.2.26 fills spi_bus_config_t with 0xff, leaving the new
 IDF 6.1 dma_burst_size member at UINT32_MAX. The K151-only build patch
 sets it to zero (SDK default 32 bytes) and stops the SPI initialization
@@ -184,8 +190,8 @@ Secure boot, encryption, anti-rollback and nondefault ROM log modes are
 disabled. This is a bounded static review, not a formal proof of all
 computed addresses, ROM behavior or runtime paths. The application SDK
 reports v6.1.1-dirty; first boot remains untested.
-Only the exact reviewed tuple is allowed for supervised ROM-only Flash
-installation. All other builds remain denied.
+This reviewed tuple has been withdrawn from new installations because of the
+hardware boot failure. Only historical read-only verification is retained.
 
 ### Factory CSV spelling
 
@@ -196,7 +202,7 @@ partition image SHA-256 remains
 48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b.
 The installer still preserves the physical partition table and assets.
 
-## Supervised first installation (exact archived candidate only)
+## Supervised installation (instructions for future approved candidate only)
 
 The installer requires the exact source commit and all four image digests, explicit
 acknowledgement of download mode, same-device identity and compatible layout.

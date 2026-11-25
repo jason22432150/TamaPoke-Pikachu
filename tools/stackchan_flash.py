@@ -15,11 +15,11 @@ from stackchan_deploy_review import plan, readback, checkpoints
 
 # Only maintainers can add independently audited (commit, bootloader, app,
 # partition table, initial OTA data) tuples. No CLI override.
-# Bounded static review of the exact archived bb5234e binaries: build run
-# 45554127667, disassembly run 45562883467. Approval is for supervised
-# ROM-only Flash installation, not a guarantee of first-boot eFuse safety.
-# Keep in download mode until Flash readback and eFuse comparison succeed.
-APPROVED_BUILDS=frozenset({(
+# The bb5234e candidate is withdrawn after the owner's GDMA boot-loop.
+# Keep writes locked until the exact DMA-fix candidate is reviewed.
+APPROVED_BUILDS=frozenset()
+# Previously approved images may still be verified, read-only.
+CHECKPOINT_BUILDS=frozenset({(
     "bb5234ef25ca5903309028b76afcbc29dc414011",
     "8a7d2bb8a3ea22e1b8d9d44c2ec0e965727231066feda335234a16ac8ea0de0a",
     "d0d54b1feab01787a8b36f606b00f29ede2f4375d5b8b1c48577a83b8644ed2b",
@@ -155,7 +155,8 @@ def after_boot(port,out,runner=run_logged,snapshot=capture):
     out=out.absolute()
     if out.is_symlink() or not (out/"write-verified.json").is_file():
         raise ValueError("missing completed write verification")
-    require_approved(plan(out/"candidate"))
+    if identity(plan(out/"candidate")) not in (APPROVED_BUILDS | CHECKPOINT_BUILDS):
+        raise ValueError("unknown historical installation tuple")
     readback(out/"candidate",out/"readback")
     verify(out/"before");verify(out/"after-write")
     if compare(out/"before",out/"after-write")["changed_fields"]:

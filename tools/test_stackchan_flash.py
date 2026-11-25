@@ -6,14 +6,14 @@ import hashlib
 import json
 import unittest
 from unittest.mock import patch
-from stackchan_flash import install,serial_prefix,probe,identity,after_boot,rom_write_command,ROM_WRITE_LAUNCHER,require_approved,APPROVED_BUILDS
+from stackchan_flash import install,serial_prefix,probe,identity,after_boot,rom_write_command,ROM_WRITE_LAUNCHER,require_approved,APPROVED_BUILDS,CHECKPOINT_BUILDS
 from test_stackchan_efuse import runner as efuse_runner
 from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory,rom_write_references,efuse_mmio_literals,mmio_literal_context
 from stackchan_package import package
 from test_stackchan_review import image,table
 
 class FlashTests(unittest.TestCase):
-    def test_only_archived_reviewed_tuple_is_approved(self):
+    def test_failed_boot_candidate_is_withdrawn(self):
         approved=(
             "bb5234ef25ca5903309028b76afcbc29dc414011",
             "8a7d2bb8a3ea22e1b8d9d44c2ec0e965727231066feda335234a16ac8ea0de0a",
@@ -21,13 +21,15 @@ class FlashTests(unittest.TestCase):
             "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
             "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
         )
-        self.assertEqual(APPROVED_BUILDS,frozenset({approved}))
+        self.assertEqual(APPROVED_BUILDS,frozenset())
+        self.assertEqual(CHECKPOINT_BUILDS,frozenset({approved}))
         names=("TamaPoke.ino.bootloader.bin","TamaPoke.ino.bin",
                "TamaPoke.ino.partitions.bin","ota_data_initial.bin")
         def as_plan(t):
             return dict(source_commit=t[0],regions=[
                 dict(name=n,sha256=h) for n,h in zip(names,t[1:])])
-        require_approved(as_plan(approved))
+        with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+            require_approved(as_plan(approved))
         for i in range(len(approved)):
             tampered=list(approved)
             tampered[i]="0"*len(tampered[i])
