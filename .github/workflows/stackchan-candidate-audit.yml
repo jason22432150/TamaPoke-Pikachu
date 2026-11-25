@@ -85,7 +85,7 @@ jobs:
           for name,source,key in inputs:
               evidence=json.loads(Path(source).read_text())[key]
               wanted=set()
-              for literal in evidence["rom_references"]["literal_context"]:
+              for literal in evidence["mmio_screen"]["literal_context"]:
                   for load in literal["explicit_literal_loads"]:
                       wanted.add(int(load["instruction_address"],16))
               seen=set();functions=[];label=None;body=[];matched=False
