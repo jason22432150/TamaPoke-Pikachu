@@ -31,6 +31,7 @@ SKETCH="$STAGE/TamaPoke"
 mkdir -p "$SKETCH"
 cp "$ROOT/TamaPoke/"*.{ino,h,cpp} "$SKETCH/"
 cp "$ROOT/boards/stackchan/hal/"*.h "$SKETCH/"
+cp "$ROOT/boards/stackchan/hal/nvs_guard.cpp" "$SKETCH/"
 cp "$ROOT/boards/stackchan/partitions.csv" "$SKETCH/"
 source "$ROOT/boards/stackchan/versions.env"
 python3 "$ROOT/tools/generate_zh_tw_font.py" --u8g2 "${U8G2_SOURCE_DIR:-$ROOT/.deps/u8g2}" --out "$SKETCH/tpk_zh_tw_font.h"
@@ -50,7 +51,7 @@ cp -R "$BSP_DIR/src/drivers/FTServo_Arduino" "$SKETCH/src/drivers/"
 BIN="$STAGE/compiled"
 mkdir -p "$BIN"
 WORK="$STAGE/work"
-ARGS=(--warnings all --build-property 'compiler.cpp.extra_flags=-DBOARD_STACKCHAN=1' --fqbn 'esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=enabled,PartitionScheme=app3M_fat9M_16MB' --build-path "$WORK")
+ARGS=(--warnings all --build-property 'compiler.cpp.extra_flags=-DBOARD_STACKCHAN=1' --build-property 'compiler.c.elf.extra_flags=-Wl,--wrap=nvs_flash_init' --fqbn 'esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=enabled,PartitionScheme=app3M_fat9M_16MB' --build-path "$WORK")
 arduino-cli compile "${ARGS[@]}" --show-properties=expanded "$SKETCH" > "$STAGE/properties.txt"
 arduino-cli compile "${ARGS[@]}" --output-dir "$BIN" "$SKETCH"
 # Validate real compile outputs; publish only evidence, never the binaries.

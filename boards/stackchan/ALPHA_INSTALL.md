@@ -97,6 +97,18 @@ reachability analysis and does not prove absence of inlined or direct
 register writes. Runtime compatibility, complete eFuse write-path review,
 device partition layout and hardware behavior are not established.
 
+### First-boot NVS safeguard
+
+The observed K151 map has a 16 KiB default NVS partition. Arduino ESP32
+4.0.0 initArduino() normally erases the entire default NVS partition when
+nvs_flash_init() returns ESP_ERR_NVS_NO_FREE_PAGES or
+ESP_ERR_NVS_NEW_VERSION_FOUND. The game candidate now wraps nvs_flash_init
+at link time to suppress that specific automatic format path and stops
+game startup if NVS initialization fails. CI checks the startup reference.
+This does not make NVS read-only: normal SDK recovery/compaction and game
+preferences can still change Flash. Diagnostic artifacts and older game
+candidates do not have this safeguard and remain NOT FOR FLASH.
+
 ## Future approved installation (not yet authorized)
 
 Once a separately reviewed build is approved by maintainers, the installer

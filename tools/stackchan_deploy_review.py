@@ -254,6 +254,12 @@ def boot_evidence(properties,build_dir,bins,source_commit):
     nm=Path(props["compiler.path"])/(props["compiler.prefix"]+"nm")
     app_elf=build_dir/"TamaPoke.ino.elf"
     app_symbols=inspect_efuse_symbols(nm,app_elf,"app_main",bins/"TamaPoke.ino.bin")
+    # Verify the startup wrapper is present and the core actually references it.
+    objdump=nm.with_name(nm.name.removesuffix("nm")+"objdump")
+    init_asm=subprocess.run([str(objdump),"-d","--disassemble=initArduino",str(app_elf)],
+                            check=True,capture_output=True,text=True).stdout
+    if "--wrap=nvs_flash_init" not in props.get("compiler.c.elf.extra_flags","") or not re.search(r"<__wrap_nvs_flash_init(?:\+0x[0-9a-f]+)?>",init_asm):
+        raise ValueError("Arduino startup does not reference NVS initialization guard")
     with tempfile.TemporaryDirectory() as tmp:
         image=Path(tmp)/"boot.bin"
         subprocess.run([str(Path(props["tools.esptool_py.path"])/props["tools.esptool_py.cmd"]),
@@ -266,7 +272,7 @@ def boot_evidence(properties,build_dir,bins,source_commit):
                 sdk_config_sha256=sha256(config),bootloader_elf_name=elf.name,
                 bootloader_elf_sha256=sha256(elf),bootloader_bin_sha256=sha256(boot),
                 app_sha256=sha256(bins/"TamaPoke.ino.bin"),sdk_security_settings=settings,
-                application_efuse_symbols=app_symbols,
+                application_efuse_symbols=app_symbols,nvs_startup_guard_reference=True,
                 elf_conversion_matches=True,bootloader_security_attested=False,
                 flash_authorized=False,warning="SDK config and ELF provenance are not proof of bootloader build configuration or eFuse behavior.")
 

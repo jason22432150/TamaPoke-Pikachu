@@ -23,6 +23,7 @@
 #include "game_body.h"
 #include "game_sidebar.h"
 #include "game_perf.h"
+#include "nvs_guard.h"
 #else
 #include "TouchDrvCSTXXX.hpp"
 #endif
@@ -380,6 +381,10 @@ void setup() {
   Serial.setTxTimeoutMs(0);
   Serial.printf("TamaPoke fw v%s (%s)\n", FW_VERSION, BOARD_NAME);
 #if BOARD_STACKCHAN
+  if (!stackchanNvsReady()) {
+    Serial.println("K151 NVS initialization failed; automatic format disabled");
+    return;
+  }
   auto status=stackBoard.begin();
   if(status!=BootStatus::Ok || !gfx->begin()) { Serial.printf("K151 init failed: %u\n",unsigned(status)); return; }
   // This is a development build, not a factory-compatible firmware.
