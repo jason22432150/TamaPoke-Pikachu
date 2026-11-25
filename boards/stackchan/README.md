@@ -120,8 +120,12 @@ strip. Host tests compare both viewport modes against reference logical
 raster sampling, including clipped rectangles and boundary sentinels.
 This does not yet reflow individual screens or remove edge extension.
 Actual FPS, memory use and visual fidelity still require hardware validation.
-Egg, modal, bath, evolution/farewell prompts, gallery, settings and minigames
-retain compatibility geometry. Display and touch share the geometry; changes
+B3 moves starter selection, eggs, feeding, bathing, evolution/farewell prompts,
+release and choice dialogs, and ceremonies into the landscape viewport.
+Shared logical hit rectangles are checked against visible physical samples;
+page changes and stale presentation cancel contacts until release. Legacy
+card, gallery, keyboard, clock and minigames retain compatibility geometry.
+Actual multilingual text fit, animation and touch usability require hardware tests. Display and touch share the geometry; changes
 cancel in-flight gestures. Legacy side panels remain in those screens.
 No partition, NVS format, eFuse, motor, or OTA change. Hardware acceptance and
 candidate approval are outstanding; do not flash this commit automatically.

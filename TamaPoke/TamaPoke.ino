@@ -20,6 +20,7 @@
 #include "board.h"
 #if BOARD_STACKCHAN
 #include "game_display.h"
+#include "home_dialog_policy.h"
 #include "game_body.h"
 #include "game_sidebar.h"
 #include "game_perf.h"
@@ -64,6 +65,7 @@ static StackChanPanel stackPanel;
 static StackChanCanvas *gfx=&stackCanvas;
 static StackChanPanel *panel=&stackPanel;
 static bool stackGameReady=false;
+static tpkhome::Page stackPresentedPage=tpkhome::Page::Compat;
 #else
 #define FW_VERSION "1.19-pika"
 
@@ -517,6 +519,21 @@ void ensureMon() {
 }
 
 #if BOARD_STACKCHAN
+static tpkhome::Page stackHomePage(){
+  using tpkhome::Page;
+  if(pet.awaitingStarter())return Page::Starter;
+  if(galleryOpen||cardOpen||kbOpen||clockOpen||gameOpen||sackOpen)return Page::Compat;
+  if(pet.ceremony)return Page::Ceremony;
+  if(choiceKind)return choiceKind==1?Page::EvolveChoice:Page::FarewellChoice;
+  if(confirmUntil)return Page::Release;
+  if(feedMenuUntil)return Page::Feed;
+  if(pet.isEgg())return Page::Egg;
+  if(bathUntil)return Page::Bath;
+  if(pet.wantEvolveButton())return Page::EvolvePrompt;
+  if(pet.canRunawayNow())return Page::RunawayPrompt;
+  if(pet.wantFarewellButton())return Page::FarewellPrompt;
+  return Page::Pet;
+}
 static tpkside::Availability sidebarAvailability(){
   return {!galleryOpen&&!cardOpen&&!kbOpen&&!clockOpen&&!gameOpen&&!sackOpen&&
     !pet.awaitingStarter()&&!pet.ceremony&&!confirmUntil&&!choiceKind&&!feedMenuUntil&&!bathUntil,
@@ -651,16 +668,15 @@ void loop() {
   if (interval && now - lastRender >= interval) {
     lastRender = now;
 #if BOARD_STACKCHAN
-    // Only the ordinary home uses the first landscape layout; keep all other
-    // screens, modal dialogs and egg/ceremony views in the compatible geometry.
-    const auto available=sidebarAvailability();
-    stackCanvas.setLandscapeHome(available.home && !available.egg &&
-        !pet.wantEvolveButton() && !pet.canRunawayNow() && !pet.wantFarewellButton());
+    const auto framePage=stackHomePage();
+    stackCanvas.setLandscapeHome(tpkhome::landscape(framePage));
     const bool measure=stackPerf.monitor().enabled();
     const uint32_t started=measure?micros():0;
 #endif
     drewFrame = render();
 #if BOARD_STACKCHAN
+    if(drewFrame && stackCanvas.landscapePresented()==tpkhome::landscape(framePage))
+      stackPresentedPage=framePage;
     if(measure)stackPerf.monitor().rendered(micros()-started);
 #endif
 #if BOARD_AMOLED_175C
@@ -1010,7 +1026,15 @@ void handleTouch() {
 #if BOARD_STACKCHAN
   const auto physical=stackBoard.touch();
   const bool landscape=stackCanvas.landscapePresented();
-  auto routed=stackTouchRouter.update(physical,sidebarAvailability(),millis(),landscape);
+  const auto page=stackHomePage();
+  // Do not act on stale pixels while a new dialog or page awaits rendering.
+  if(page!=stackPresentedPage || landscape!=tpkhome::landscape(page)){
+    stackTouchRouter.block(physical);
+    wasPressed=false;holdFired=false;swallowGesture=true;
+    if(physical.pressed){screenOff=false;wakeUI();}
+    return;
+  }
+  auto routed=stackTouchRouter.update(physical,sidebarAvailability(),millis(),landscape,uint8_t(page));
   if(routed.cancel) {wasPressed=false;holdFired=false;swallowGesture=true;}
   if(routed.wake) {screenOff=false;wakeUI();}
   if(!routed.forward) {
@@ -1092,7 +1116,11 @@ void handleTouch() {
     // pulsacion larga sin moverse sobre el bicho -> dialogo de soltar
     if (!holdFired && !swallowGesture && !galleryOpen && !cardOpen && !kbOpen && !clockOpen && millis() - tStart > 3000 &&
         abs(tXl - tX0) < 30 && abs(tYl - tY0) < 30 && inPetZone(tX0, tY0) &&
-        !pet.isEgg() && !confirmUntil && !pet.ceremony) {
+        !pet.isEgg() && !confirmUntil && !pet.ceremony
+#if BOARD_STACKCHAN
+        && !feedMenuUntil && !choiceKind && !bathUntil && !gameOpen && !sackOpen
+#endif
+        ) {
       confirmUntil = millis() + 10000;
       holdFired = true;
     }
@@ -1113,6 +1141,9 @@ void handleTouch() {
 void openClock();  // prototipo
 
 void onSwipeV(int dir) {
+#if BOARD_STACKCHAN
+  if(tpkhome::modal(stackHomePage()))return;
+#endif
   if (pet.awaitingStarter()) return;  // bloqueado durante la eleccion de inicial
   if (gameOpen || galleryOpen || kbOpen || sackOpen || pet.ceremony) return;
   if (clockOpen) { clockOpen = false; return; }
@@ -1130,6 +1161,9 @@ void onSwipeV(int dir) {
 
 // deslizar: dir +1 = hacia la derecha
 void onSwipe(int dir) {
+#if BOARD_STACKCHAN
+  if(tpkhome::modal(stackHomePage()))return;
+#endif
   if (pet.awaitingStarter()) return;  // bloqueado durante la eleccion de inicial
   if (gameOpen || kbOpen || clockOpen) return;
   if (cardOpen) {  // dentro de la ficha: cambiar entre las 4 paginas
@@ -1168,6 +1202,10 @@ void onSwipe(int dir) {
 void onTap(int16_t x, int16_t y) {
   // Serial.printf("TOUCH %d %d\n", x, y);  // diagnostico (silenciado: satura el log)
   if (pet.awaitingStarter()) {  // primera partida: elegir inicial
+#if BOARD_STACKCHAN
+    int i=tpkhome::hit(tpkhome::Page::Starter,x,y);
+    if(i>=0){pet.chooseStarter(STARTER_DEX[i]);sfxPlay(SFX_TAP);}
+#else
     for (int i = 0; i < 3; i++) {
       int ry = STARTER_ROW_Y + i * (STARTER_ROW_H + STARTER_ROW_GAP);
       if (x >= 70 && x <= 396 && y >= ry && y <= ry + STARTER_ROW_H) {
@@ -1176,6 +1214,7 @@ void onTap(int16_t x, int16_t y) {
         break;
       }
     }
+#endif
     return;
   }
   if (galleryOpen) {
@@ -1206,8 +1245,13 @@ void onTap(int16_t x, int16_t y) {
     return;
   }
   if (choiceKind) {          // dialogo de decision: boton accion (arriba) / mantener (abajo)
+#if BOARD_STACKCHAN
+    int item=timeLeft(choiceUntil)?tpkhome::hit(stackHomePage(),x,y):-1;
+    bool b1=item==0,b2=item==1;
+#else
     bool b1 = (x >= 93 && x <= 373 && y >= 206 && y <= 258);  // accion
     bool b2 = (x >= 93 && x <= 373 && y >= 268 && y <= 320);  // mantener / quedaros
+#endif
     if (choiceKind == 1) {                 // evolucion
       if (b1) { int16_t old = pet.speciesId; pet.evolve(); evoPmd.load(old, pet.shiny); }
       else if (b2) pet.declineEvolve();
@@ -1219,15 +1263,24 @@ void onTap(int16_t x, int16_t y) {
     return;
   }
   if (confirmUntil) {        // dialogo "soltar?": SI / NO
+#if BOARD_STACKCHAN
+    if(timeLeft(confirmUntil)&&tpkhome::hit(tpkhome::Page::Release,x,y)==0){
+#else
     if (timeLeft(confirmUntil) && x >= 118 && x <= 218 && y >= 252 && y <= 304) {
+#endif
       pet.release();
     }
     confirmUntil = 0;
     return;
   }
   if (feedMenuUntil) {       // selector de comida
+#if BOARD_STACKCHAN
+    int item=timeLeft(feedMenuUntil)?tpkhome::hit(tpkhome::Page::Feed,x,y):-1;
+    if(item>=0){
+#else
     if (timeLeft(feedMenuUntil) && y >= 288 && y <= 352 && x >= 101 && x <= 365) {
       int item = (x - 101) / 66;
+#endif
       if (item == 3) pet.feedCandy();
       else pet.feedBerry(item);
       sfxPlay(SFX_EAT);
@@ -1394,7 +1447,39 @@ void drawScene(uint8_t biome, uint32_t now, bool night) {
 }
 
 // primera partida: elige inicial entre Bulbasaur / Charmander / Squirtle
+#if BOARD_STACKCHAN
+// Keep shared draw and hit rectangles in logical space; B2 rasterizes them
+// directly into the landscape viewport. Fit localized captions to each card.
+static void stackDialogText(const char* s,int x,int y,int w,uint8_t size,uint16_t color){
+  while(size>1&&textW(s,size)>w-6)--size;
+  gfx->setTextColor(color);setSize(size);
+  setCur(x+(w-int(textW(s,size)))/2,y);printT(s);
+}
+static void stackDialogBox(tpkhome::Rect b,uint16_t color,uint16_t border){
+  gfx->fillRoundRect(b.x,b.y,b.w,b.h,12,color);
+  gfx->drawRoundRect(b.x,b.y,b.w,b.h,12,border);
+}
+#endif
 void renderStarterSelect() {
+#if BOARD_STACKCHAN
+  gfx->fillScreen(UI_BG_DAY);
+  stackDialogText(T(S_CHOOSE_STARTER),12,43,442,3,UI_INK);
+  for(int i=0;i<3;i++){
+    const auto b=tpkhome::starter(i);
+    const int d=STARTER_DEX[i];
+    const auto& de=DEX_TBL[d];
+    stackDialogBox(b,lerp565(de.accent,UI_WHITE,6,8),de.accent);
+    const uint8_t* th=thumbs.get(d);
+    if(th && th[0] && th[1] && th[0]<=80 && th[1]<=80){
+      int scale=80/(th[0]>th[1]?th[0]:th[1]);
+      if(scale>3)scale=3;
+      drawThumb(th,b.x+(b.w-80)/2,b.y+20,scale,false);
+    }
+    stackDialogText(dexName(d),b.x,b.y+135,b.w,3,UI_INK);
+  }
+  flushUI();
+  return;
+#endif
   gfx->fillScreen(RGB565_BLACK);
   gfx->fillCircle(CX, CY, 231, UI_BG_DAY);
   const char *t = T(S_CHOOSE_STARTER);
@@ -1646,7 +1731,7 @@ bool render() {
 
   if (pet.isEgg()) {
     drawHeader(T(S_EGG_HDR), inkColor(), eggMsg());
-    int s = 5, x = CX - 16 * s, y = PET_CY - 16 * s;
+    int s = BOARD_STACKCHAN ? 4 : 5, x = CX - 16 * s, y = PET_CY - 16 * s;
     drawMap(SPR_EGG, SPRITE_H, x, y, s, false);
     if (pet.eggCracks() >= 1)
       for (auto &c : CRACK1) gfx->fillRect(x + c[0] * s, y + c[1] * s, s, s, INK_K);
@@ -1656,15 +1741,15 @@ bool render() {
       const char *rar = (pet.eggRarity() == R_LEGENDARIO) ? T(S_EGG_LEGEND) : T(S_EGG_RARE);
       gfx->setTextColor(pet.eggRarity() == R_LEGENDARIO ? UI_BAR_WARN : 0x4C98);
       setSize(2);
-      setCur(centerX(rar, 2), 316);
+      setCur(centerX(rar, 2), BOARD_STACKCHAN ? 269 : 316);
       printT(rar);
     }
     char reg[24];
     snprintf(reg, sizeof(reg), T(S_POKEDEX_FMT), pet.registeredCount());
-    gfx->fillRect(0, 312, 466, 154, gNight ? UI_BG_NIGHT : UI_BG_DAY);
+    gfx->fillRect(0, BOARD_STACKCHAN ? 287 : 312, 466, BOARD_STACKCHAN ? 179 : 154, gNight ? UI_BG_NIGHT : UI_BG_DAY);
     gfx->setTextColor(inkColor());
     setSize(2);
-    setCur(centerX(reg, 2), 348);
+    setCur(centerX(reg, 2), BOARD_STACKCHAN ? 289 : 348);
     printT(reg);
   } else {
     const DexEntry &d = DEX_TBL[pet.speciesId];
@@ -1703,12 +1788,22 @@ bool render() {
     if (!timeLeft(feedMenuUntil)) {
       feedMenuUntil = 0;
     } else {
+#if BOARD_STACKCHAN
+      stackDialogBox(tpkhome::FEED_PANEL,UI_BG_DAY,inkColor());
+      const char *const *icons[]={SPR_ICON_FOOD,SPR_ICON_BERRY_B,SPR_ICON_BERRY_G,SPR_ICON_CANDY};
+      for(int i=0;i<4;i++){
+        auto b=tpkhome::feed(i);
+        stackDialogBox(b,UI_WHITE,UI_INK);
+        drawMap(icons[i],16,b.x+(b.w-48)/2,b.y+(b.h-48)/2,3,false);
+      }
+#else
       gfx->fillRoundRect(101, 288, 264, 64, 14, UI_WHITE);
       gfx->drawRoundRect(101, 288, 264, 64, 14, inkColor());
       drawMap(SPR_ICON_FOOD, 16, 110, 296, 3, false);
       drawMap(SPR_ICON_BERRY_B, 16, 176, 296, 3, false);
       drawMap(SPR_ICON_BERRY_G, 16, 242, 296, 3, false);
       drawMap(SPR_ICON_CANDY, 16, 308, 296, 3, false);
+#endif
     }
   }
 
@@ -1717,6 +1812,18 @@ bool render() {
     if (!timeLeft(confirmUntil)) {
       confirmUntil = 0;
     } else {
+#if BOARD_STACKCHAN
+      char q[80];
+      snprintf(q,sizeof(q),T(S_RELEASE_FMT),dexName(pet.speciesId));
+      stackDialogBox(tpkhome::RELEASE_PANEL,UI_WHITE,UI_INK);
+      stackDialogText(q,40,174,386,3,UI_INK);
+      auto yes=tpkhome::release(0),no=tpkhome::release(1);
+      // Destructive action is red, cancellation is green.
+      stackDialogBox(yes,UI_BAR_BAD,UI_INK);
+      stackDialogBox(no,UI_BAR_OK,UI_INK);
+      stackDialogText(T(S_YES),yes.x,yes.y+20,yes.w,3,UI_WHITE);
+      stackDialogText(T(S_NO),no.x,no.y+20,no.w,3,UI_WHITE);
+#else
       gfx->fillRoundRect(94, 168, 278, 152, 16, UI_WHITE);
       gfx->drawRoundRect(94, 168, 278, 152, 16, UI_INK);
       // 48 y no 28: el buffer se dimensiono cuando toda cadena era de un byte
@@ -1736,6 +1843,7 @@ bool render() {
       gfx->fillRoundRect(248, 252, 100, 52, 12, UI_BAR_BAD);
       setCur(248 + (100 - textW(T(S_NO), 2)) / 2, 270);
       printT(T(S_NO));
+#endif
     }
   }
 
@@ -2843,6 +2951,16 @@ void drawChoiceDialog() {
     q = T(S_FAR_Q); o1 = T(S_FAR_GO); o2 = T(S_FAR_STAY);
     c1 = UI_BAR_WARN; t1 = UI_INK; c2 = UI_BAR_OK; t2 = UI_WHITE;
   }
+#if BOARD_STACKCHAN
+  stackDialogBox(tpkhome::CHOICE_PANEL,UI_WHITE,UI_INK);
+  stackDialogText(q,42,130,382,3,UI_INK);
+  auto first=tpkhome::choice(0),second=tpkhome::choice(1);
+  stackDialogBox(first,c1,UI_INK);
+  stackDialogBox(second,c2,UI_INK);
+  stackDialogText(o1,first.x,first.y+15,first.w,3,t1);
+  stackDialogText(o2,second.x,second.y+15,second.w,3,t2);
+  return;
+#endif
   gfx->fillRoundRect(73, 156, 320, 188, 16, UI_WHITE);
   gfx->drawRoundRect(73, 156, 320, 188, 16, UI_INK);
   gfx->setTextColor(UI_INK);

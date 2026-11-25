@@ -1,5 +1,7 @@
 #include "hal/sidebar_policy.h"
+#include "hal/home_dialog_policy.h"
 #include <cassert>
+#include <initializer_list>
 using namespace tpkside;
 int main(){
   Availability a={true,true,false,false};
@@ -62,4 +64,30 @@ int main(){
   home.update({0,0,false},a,1120,true);
   a.awake=false;assert(home.update({10,210,true},a,1140,true).wake);
   a.awake=true;assert(home.update({10,210,false},a,1160,true).action==Key::None);
+  using tpkhome::Page;
+  for(Page page:{Page::Starter,Page::Feed,Page::Release,Page::EvolveChoice,Page::FarewellChoice}){
+    bool seen[4]={};
+    const int count=page==Page::Starter?3:page==Page::Feed?4:2;
+    for(int y=HOME_Y;y<HOME_BOTTOM;y++)for(int x=0;x<HOME_W;x++){
+      auto p=homeToLogical({int16_t(x),int16_t(y),true});
+      const int k=tpkhome::hit(page,p.x,p.y);
+      assert(k>=-1&&k<count);
+      if(k>=0)seen[k]=true;
+    }
+    for(int i=0;i<count;i++)assert(seen[i]);
+  }
+  assert(tpkhome::hit(Page::Feed,48,224)==0);
+  assert(tpkhome::hit(Page::Feed,136,224)==-1);
+  assert(tpkhome::hit(Page::Release,54,220)==0);
+  assert(tpkhome::hit(Page::Release,228,220)==-1);
+  assert(tpkhome::hit(Page::EvolveChoice,0,0)==-1);
+  TouchRouter modal;
+  modal.update({0,0,false},a,0,true,uint8_t(Page::Pet));
+  assert(modal.update({160,100,true},a,10,true,uint8_t(Page::Pet)).forward);
+  assert(modal.update({160,100,true},a,20,true,uint8_t(Page::Release)).cancel);
+  assert(!modal.update({160,100,false},a,30,true,uint8_t(Page::Release)).forward);
+  assert(modal.update({160,100,true},a,40,true,uint8_t(Page::Release)).forward);
+  modal.block({160,100,true});
+  assert(!modal.update({160,100,true},a,50,true,uint8_t(Page::Pet)).forward);
+  assert(!modal.update({160,100,false},a,60,true,uint8_t(Page::Pet)).forward);
 }

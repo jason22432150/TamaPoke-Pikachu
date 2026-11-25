@@ -34,12 +34,15 @@ class TouchRouter {
   Key key_=Key::None;
   uint32_t started_=0;
   bool landscape_=false;
+  uint8_t page_=0;
 public:
-  Route update(TouchPoint p,Availability a,uint32_t now,bool landscape=false) {
+  // A screen/state transition can occur before its new pixels are presented.
+  void block(TouchPoint p){owner_=p.pressed?Owner::Blocked:Owner::Idle;key_=Key::None;}
+  Route update(TouchPoint p,Availability a,uint32_t now,bool landscape=false,uint8_t page=0) {
     Route r={false,false,false,Key::None};
     // Never complete a gesture against a different displayed geometry.
-    if(landscape!=landscape_){
-      landscape_=landscape;
+    if(landscape!=landscape_ || page!=page_){
+      landscape_=landscape;page_=page;
       r.cancel=owner_==Owner::Center;
       if(owner_!=Owner::Idle || p.pressed){
         owner_=p.pressed?Owner::Blocked:Owner::Idle;key_=Key::None;
