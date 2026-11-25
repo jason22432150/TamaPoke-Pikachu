@@ -133,6 +133,15 @@ rectangular ball-wall physics, visible floor, separated score/lives/exit,
 controls. K151 scores on press (one hit per contact, wake-only when dimmed),
 not release. Saves/records are retained; difficulty and rapid-touch capture
 need physical validation and cross-layout score comparability is unverified.
+B6 adds optional exact previous-frame PSRAM shadow (115200 extra bytes),
+16-pixel tile/8-row strip dirty bounding rectangles, synchronous internal-RAM
+transfers and full-refresh fallback on allocation failure, mode change or wake.
+LCD? reports cache/dirty state, frames, unchanged, rects, pixels, full_pixels;
+LCD RESET resets counters; LCD FULL disables and LCD DIRTY enables dirty
+updates (RAM-only, no NVS). Compare equal workloads with PERF ON and LCD RESET;
+LCD counts viewport transfers, not status chrome. Minigame polling target is
+10ms, other screens 20ms; actual input latency depends on loop duration.
+No SPI clock, asynchronous DMA or motor changes. Hardware speedup unverified.
 Actual multilingual text fit, animation and touch usability require hardware tests. Display and touch share the geometry; changes
 cancel in-flight gestures. Legacy side panels remain in those screens.
 No partition, NVS format, eFuse, motor, or OTA change. Hardware acceptance and

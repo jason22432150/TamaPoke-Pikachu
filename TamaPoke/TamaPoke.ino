@@ -68,6 +68,7 @@ static StackChanPanel *panel=&stackPanel;
 static bool stackGameReady=false;
 static tpkhome::Page stackPresentedPage=tpkhome::Page::Compat;
 static uint8_t stackPresentedToken=0;
+static void stackInvalidateStaticScreen();
 #else
 #define FW_VERSION "1.19-pika"
 
@@ -674,6 +675,15 @@ void loop() {
   audioSetIdle(!amplifierWanted(pc));  // el amplificador consume en reposo
   batSetPollMs(powerCacheMs(pc));
   uint32_t interval = frameIntervalMs(pc);
+#if BOARD_STACKCHAN
+  // Brightness-off does not normally lose LCD GRAM, but force a full refresh
+  // on wake rather than relying on that property. Static pages also redraw.
+  static bool previousOff=false;
+  if(previousOff && !pc.screenOff){
+    stackCanvas.invalidate();stackInvalidateStaticScreen();
+  }
+  previousOff=pc.screenOff;
+#endif
   bool drewFrame = false;
   if (interval && now - lastRender >= interval) {
     lastRender = now;
@@ -825,6 +835,17 @@ void handleSerial() {
   }
 #endif
 #if BOARD_STACKCHAN
+  if(line=="LCD?" || line=="LCD RESET" || line=="LCD FULL" || line=="LCD DIRTY"){
+    if(line=="LCD RESET")stackCanvas.resetLcdCounters();
+    else if(line=="LCD FULL")stackCanvas.setDirtyEnabled(false);
+    else if(line=="LCD DIRTY")stackCanvas.setDirtyEnabled(true);
+    const auto& c=stackCanvas.lcdCounters();
+    Serial.printf("LCD cache=%d dirty=%d frames=%llu unchanged=%llu rects=%llu pixels=%llu full_pixels=%llu\n",
+      int(stackCanvas.cacheAvailable()),int(stackCanvas.dirtyActive()),
+      (unsigned long long)c.frames,(unsigned long long)c.unchanged,
+      (unsigned long long)c.rects,(unsigned long long)c.pixels,(unsigned long long)c.fullPixels);
+    Serial.println("DONE");return;
+  }
   if(stackPerf.command(line,screenOff,dimStage>0,gameOpen||sackOpen)) return;
   if(stackBody.command(line)) return;
 #endif
@@ -1030,7 +1051,13 @@ void handleTouch() {
   }
 #endif
   static uint32_t lastPoll = 0;
-  if (millis() - lastPoll < 20) return;  // 50 Hz le sobra a un dedo
+#if BOARD_STACKCHAN
+  // M5.update remains on the loop task; no concurrent I2C or display access.
+  const uint32_t pollMs=(gameOpen||sackOpen)?10:20;
+#else
+  const uint32_t pollMs=20;
+#endif
+  if (millis() - lastPoll < pollMs) return;
   lastPoll = millis();
   // solo tocamos el bus si el chip aviso por INT o si el dedo sigue abajo (hay
   // que detectar el levantamiento). Leer el CST9217 dormido se colgaba ~1s y
@@ -1706,6 +1733,9 @@ static uint32_t screenKey() {
   return h;
 }
 bool screenKeyValid = false;  // (el renderer del host lo invalida entre escenas)
+#if BOARD_STACKCHAN
+static void stackInvalidateStaticScreen(){screenKeyValid=false;galleryDirty=true;}
+#endif
 uint32_t lastScreenKey = 0;
 
 // Dibuja un frame y devuelve true si lo ha volcado al panel.

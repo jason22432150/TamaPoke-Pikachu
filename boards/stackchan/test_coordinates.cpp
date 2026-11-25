@@ -1,5 +1,6 @@
 #include "hal/board_hal.h"
 #include "hal/native_raster.h"
+#include "hal/dirty_rect.h"
 #include <cassert>
 #include <cstdlib>
 static uint16_t frame[GAME_SIZE*GAME_SIZE];
@@ -36,7 +37,34 @@ static void checkNative(bool home){
     }
   assert(native[0]==0xA55A&&native[tpkraster::PIXELS+1]==0x5AA5);
 }
+static void checkDirty(){
+  uint16_t old[37*8]={},cur[37*8]={},packed[37*8]={};
+  auto span=tpkdirty::changed(cur,old,37,8,false);assert(span.w==0);
+  span=tpkdirty::changed(cur,old,37,8,true);assert(span.x==0&&span.w==37);
+  span=tpkdirty::changed(cur,nullptr,37,8,false);assert(span.w==37);
+  // Odd width and final partial strip; every changed pixel must be covered.
+  uint32_t state=42;
+  for(int n=0;n<300;n++){
+    int rows=1+n%8;
+    std::memcpy(cur,old,sizeof(cur));
+    for(int j=0;j<n%11;j++){
+      state=state*1664525u+1013904223u;
+      cur[state%(37*rows)]^=uint16_t(state|1u);
+    }
+    span=tpkdirty::changed(cur,old,37,rows,false);
+    assert(span.x>=0&&span.w>=0&&span.x+span.w<=37);
+    if(span.w)tpkdirty::pack(packed,cur,37,rows,span);
+    for(int y=0;y<rows;y++)for(int x=0;x<37;x++){
+      if(cur[y*37+x]!=old[y*37+x])assert(x>=span.x&&x<span.x+span.w);
+      if(x>=span.x&&x<span.x+span.w)old[y*37+x]=packed[y*span.w+x-span.x];
+      assert(old[y*37+x]==cur[y*37+x]);
+    }
+  }
+  tpkdirty::Counters c;c.frame(320,160,0,0);c.frame(320,160,128,1);
+  assert(c.frames==2&&c.unchanged==1&&c.rects==1&&c.pixels==128&&c.fullPixels==102400);
+}
 int main(){
+  checkDirty();
   for(int x=0;x<VIEW_SIZE;x++) xMap[x]=logicalAxis(x);
   for(int y=0;y<GAME_SIZE;y++) for(int x=0;x<GAME_SIZE;x++)
     frame[y*GAME_SIZE+x]=uint16_t((x*97u+y*311u)^0xF800u);
