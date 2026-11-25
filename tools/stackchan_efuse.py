@@ -95,7 +95,7 @@ def capture(port,out,runner=run_logged,before="default-reset"):
     runner(base+["version"],out/"version.txt")
     if not re.search(r"\bv?5\.1\.0\b",(out/"version.txt").read_text()):
         raise ValueError("esptool 5.1.0 required")
-    mac=base+["--chip","esp32s3","--port",port,"--before",before,"--after","no-reset","read-mac"]
+    mac=base+["--chip","esp32s3","--port",port,"--before",before,"--after","no-reset","--no-stub","read-mac"]
     runner(mac,out/"mac-before.txt")
     runner([sys.executable,"-m","espefuse","--chip","esp32s3","--port",port,"--before",before,
             "summary","--format","json","--file",str(out/"summary.json")],out/"summary.log")

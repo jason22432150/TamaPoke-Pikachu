@@ -9,8 +9,10 @@ def runner(changed=False,mac="00:11:22:33:44:55",missing=False,mac_status=" (OK)
         if args[-1]=="version":
             report="esptool v5.1.0"
         elif args[-1]=="read-mac":
+            assert "--no-stub" in args
             report="MAC: "+mac
         elif args[-1]=="get-security-info":
+            assert "--no-stub" in args
             report=f"SPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): {crypt_count:#x}"
         elif "summary" in args:
             assert args[1:3]==["-m","espefuse"]

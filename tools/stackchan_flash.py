@@ -31,7 +31,22 @@ def serial_prefix(port):
     if not re.fullmatch(r"/dev/(?:cu\.|tty)[A-Za-z0-9_.-]+",port):
         raise ValueError("explicit macOS/Linux serial device path required")
     return [sys.executable,"-m","esptool","--chip","esp32s3","--port",port,
-            "--baud","115200","--before","no-reset","--after","no-reset"]
+            "--baud","115200","--before","no-reset","--after","no-reset","--no-stub"]
+
+# esptool 5.1.0 write_flash() otherwise retries a lost serial connection
+# via esp.connect() with the default reset mode. Stop on disconnection.
+# This fixed launcher is used only after the existing build approval gate.
+ROM_WRITE_LAUNCHER = """import esptool
+from esptool.targets.esp32s3 import ESP32S3ROM
+if esptool.__version__ != "5.1.0":
+    raise SystemExit("esptool 5.1.0 required")
+ESP32S3ROM.WRITE_FLASH_ATTEMPTS = 1
+esptool.main()
+"""
+
+def rom_write_command(port):
+    cmd=serial_prefix(port)
+    return [sys.executable,"-c",ROM_WRITE_LAUNCHER,*cmd[3:]]
 
 def probe(candidate,port,out,runner=run_logged,snapshot=capture):
     candidate=candidate.resolve();out=out.absolute()
@@ -112,7 +127,7 @@ def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture):
     for r in p["regions"]:
         if r["name"]!=table_name:
             args.extend([hex(r["offset"]),str(staged/r["name"])])
-    run(args,"write.log")
+    runner(rom_write_command(port)+args,out/"write.log")
     # No hard reset. Operator must hold the device in download mode until
     # readback and the second eFuse capture complete.
     rb=out/"readback";rb.mkdir(mode=0o700)

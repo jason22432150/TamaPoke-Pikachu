@@ -41,9 +41,15 @@ Use the official K151 download-mode procedure. Do not enable movement.
 This lists serial devices on macOS. Replace the example port below with the
 actual K151 port. Manually enter ROM download mode before invoking probe,
 install or after-boot. The installer now requests --before no-reset and
---after no-reset for esptool and --before no-reset for espefuse. This avoids intentional hardware reset, but esptool 5.1.0 may perform a
-soft reset to return from its RAM flasher stub to the ROM loader. Serial
-open/close and USB behavior also require physical validation. Stop if the port changes or normal firmware starts.
+--after no-reset for esptool and --before no-reset for espefuse. The installer now also passes --no-stub to esptool, so it uses the ROM
+loader rather than launching a RAM flasher. This avoids the normal stub
+exit soft reset; ROM flash readback is slower (64 bytes per request).
+The write launcher pins esptool 5.1.0 and disables its automatic write
+reconnect, which otherwise calls connect() with the default reset mode.
+Serial open/close and USB behavior still require physical validation.
+Stop if the port changes or normal firmware starts. Do not retry a failed
+write automatically. The read-only probe is safe to test with the current
+factory firmware in manual download mode; it does not authorize installation.
 
     python tools/stackchan_flash.py probe --candidate ~/stackchan-alpha-0.1.0 --port /dev/cu.usbmodemXXXX --out ~/k151-alpha-preflight
 

@@ -1,10 +1,12 @@
 from pathlib import Path
 import tempfile
+import sys
+import types
 import hashlib
 import json
 import unittest
 from unittest.mock import patch
-from stackchan_flash import install,serial_prefix,probe,identity,after_boot
+from stackchan_flash import install,serial_prefix,probe,identity,after_boot,rom_write_command,ROM_WRITE_LAUNCHER
 from test_stackchan_efuse import runner as efuse_runner
 from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory,rom_write_references,efuse_mmio_literals,mmio_literal_context
 from stackchan_package import package
@@ -47,6 +49,8 @@ class FlashTests(unittest.TestCase):
                     report="Detected flash size: 16MB"
                 elif "write-flash" in args:
                     self.assertIn("no-reset",args)
+                    self.assertIn("--no-stub",args)
+                    self.assertEqual(args[1:3],["-c",ROM_WRITE_LAUNCHER])
                     i=args.index("write-flash")+7
                     self.assertEqual([int(x,16) for x in args[i::2]],[0,0xd000,0x20000])
                     for offset,name in zip(args[i::2],args[i+1::2]):
@@ -153,6 +157,23 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(prefix[prefix.index("--before")+1],"no-reset")
         self.assertEqual(prefix[prefix.index("--after")+1],"no-reset")
         self.assertNotIn("--force",serial_prefix("/dev/cu.usbmodem1"))
+        self.assertIn("--no-stub",prefix)
+        self.assertEqual(rom_write_command("/dev/cu.usbmodem1")[3:],prefix[3:])
+    def test_rom_write_launcher_disables_reconnect(self):
+        class ROM:
+            WRITE_FLASH_ATTEMPTS=2
+        module=types.ModuleType("esptool")
+        module.__version__="5.1.0"
+        calls=[]
+        module.main=lambda: calls.append(ROM.WRITE_FLASH_ATTEMPTS)
+        target=types.ModuleType("esptool.targets.esp32s3")
+        target.ESP32S3ROM=ROM
+        with patch.dict(sys.modules,{"esptool":module,"esptool.targets":types.ModuleType("esptool.targets"),"esptool.targets.esp32s3":target}):
+            exec(ROM_WRITE_LAUNCHER,{})
+            self.assertEqual(calls,[1])
+            module.__version__="5.1.1"
+            with self.assertRaises(SystemExit):exec(ROM_WRITE_LAUNCHER,{})
+            self.assertEqual(calls,[1])
     def test_efuse_symbol_inventory(self):
         output="app_main T 40000000 10\nesp_efuse_write_field_bit T 40000010 20\n"
         output+="esp_efuse_utility_burn_chip_opt.constprop.0 t 40000030 10\n"
