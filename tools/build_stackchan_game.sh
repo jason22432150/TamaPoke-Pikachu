@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+python3 "$ROOT/tools/patch_stackchan_m5gfx.py" "$(arduino-cli config get directories.user)/libraries/M5GFX" --check
 PACKAGE=""
 if [[ $# -ne 0 ]]; then
   if [[ $# -ne 2 || ( "$1" != "--local-candidate" && "$1" != "--ci-candidate" ) || -z "$2" ]]; then

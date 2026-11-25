@@ -82,6 +82,27 @@ If the probe fails, share only the line beginning
 SPI Boot Crypt Count (SPI_BOOT_CRYPT_CNT): from security.txt, not the
 full security report or eFuse snapshot. Never modify the counter.
 
+### First hardware boot failure and DMA fix candidate
+
+The owner reported a successful bb5234e Flash write/readback and unchanged
+observable eFuse summaries (no unreadable named fields), then repeated
+GDMA/SPI initialization failures and LoadProhibited before START.
+The first-boot eFuse checkpoint is still required. No motor activity was
+observed. M5GFX 0.2.26 fills spi_bus_config_t with 0xff, leaving the new
+IDF 6.1 dma_burst_size member at UINT32_MAX. The K151-only build patch
+sets it to zero (SDK default 32 bytes) and stops the SPI initialization
+path on bus/device setup errors instead of continuing with invalid handles.
+Local K151 builds must apply the pinned patch after installing M5GFX:
+    
+    python3 tools/patch_stackchan_m5gfx.py "$(arduino-cli config get directories.user)/libraries/M5GFX"
+
+This modifies only the pinned M5GFX library source; use a dedicated Arduino
+library directory if also building other boards locally. CI checks the patch
+and leaves Waveshare builds unchanged. New firmware still needs exact
+artifact safety review and approval; do not reuse the old candidate for
+another write. If boot fails, enter ROM download mode and run after-boot
+using the original installation directory before further tests.
+
 ## Source bootloader reference (build only)
 
 The Arduino 4.0.0 candidate continues to use its existing precompiled

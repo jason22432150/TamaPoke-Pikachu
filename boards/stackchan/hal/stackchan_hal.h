@@ -25,16 +25,21 @@ class StackChanHAL final : public BoardHAL {
   }
 public:
   BootStatus begin() override {
+    Serial.println("K151 boot: flash check");
     if (ESP.getFlashChipSize()!=16UL*1024*1024) return BootStatus::Flash;
+    Serial.println("K151 boot: PSRAM check");
     if (!testPsram()) return BootStatus::Psram;
+    Serial.println("K151 boot: M5.begin");
     auto cfg=M5.config();
     cfg.internal_mic=false;
     cfg.internal_spk=true;
     M5.begin(cfg);
+    Serial.println("K151 boot: M5.begin returned");
     if(M5.getBoard()!=m5gfx::board_t::board_M5StackChan) return BootStatus::Board;
     if(M5.Display.width()!=320 || M5.Display.height()!=240) M5.Display.setRotation(1);
     if(M5.Display.width()!=320 || M5.Display.height()!=240) return BootStatus::Display;
     if(!M5.Touch.isEnabled()) return BootStatus::Touch;
+    Serial.println("K151 boot: board/display/touch ready");
     ready_=true;
     return BootStatus::Ok;
   }
