@@ -68,6 +68,17 @@ class ReviewTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_esp_image(bad)
 
+    def test_observed_k151_layout(self):
+        # Independent fixture from the real read-only layout report.
+        self.assertEqual([(p["label"],p["type"],p["subtype"],p["offset"],p["size"],p["flags"])
+                          for p in expected_layout()],[
+            ("nvs",1,2,36864,16384,0),
+            ("otadata",1,0,53248,8192,0),
+            ("phy_init",1,1,61440,4096,0),
+            ("ota_0",0,16,131072,5177344,0),
+            ("ota_1",0,17,5308416,5177344,0),
+            ("assets",1,130,10485760,4194304,0),
+            ("coredump",1,3,14680064,65536,0)])
     def test_initial_ota(self):
         data=initial_ota_data()
         self.assertEqual(data,b"\xff"*8192)

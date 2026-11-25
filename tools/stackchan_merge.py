@@ -23,7 +23,10 @@ def assemble(candidate):
         if start<previous or start%SECTOR or size<=0 or size%SECTOR or start+size>FLASH_BYTES:
             raise ValueError("invalid partition bounds")
         previous=start+size
-    app=by_label["app0"]
+    apps=[p for p in partitions if p["type"]==0 and p["subtype"]==16]
+    if len(apps)!=1:
+        raise ValueError("expected exactly one initial OTA slot")
+    app=apps[0]
     ota=by_label["otadata"]
     if app["type"]!=0 or app["subtype"]!=16 or app["offset"]%65536:
         raise ValueError("invalid initial app slot")

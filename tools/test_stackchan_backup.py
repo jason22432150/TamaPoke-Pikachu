@@ -8,7 +8,7 @@ from stackchan_backup import (ARCHIVE,COPY,FLASH_BYTES,TABLE_BYTES,TABLE_OFFSET,
                               capture,verify,parse_table)
 
 
-def entry(offset=0x9000,size=0x5000,kind=1):
+def entry(offset=0x9000,size=0x4000,kind=1):
     return struct.pack("<HBBII16sI",0x50AA,kind,2,offset,size,b"nvs",0)
 
 

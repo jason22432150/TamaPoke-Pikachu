@@ -15,7 +15,7 @@ LAYOUT=ROOT/"boards/stackchan/partitions.csv"
 
 def expected_layout():
     types={"app":0,"data":1}
-    subtypes={"nvs":2,"ota":0,"ota_0":16,"ota_1":17,"spiffs":130,"coredump":3}
+    subtypes={"nvs":2,"ota":0,"ota_0":16,"ota_1":17,"spiffs":130,"coredump":3,"phy":1}
     with LAYOUT.open() as f:
         rows=csv.reader(line for line in f if line.strip() and not line.startswith("#"))
         return [dict(label=n,type=types[t],subtype=subtypes[s],offset=int(o,0),size=int(z,0),flags=0)
@@ -37,7 +37,7 @@ def review_archive(out):
     if report["status"]!="candidate-md5-valid":
         blockers.append("factory partition table unverified")
     elif report["entries"]!=expected_layout():
-        blockers.append("factory layout differs from experimental firmware")
+        blockers.append("device layout differs from candidate firmware")
     # Historical capture reports cannot establish the current device state.
     blockers.extend(["current device identity and security state not checked",
                      "factory firmware provenance and recovery procedure not validated",
@@ -94,7 +94,9 @@ def firmware_evidence(bins,source_commit):
         if p.is_symlink() or not p.is_file():
             raise ValueError("missing or invalid compile output: "+p.name)
     app,boot,table=paths
-    if not 0<app.stat().st_size<=0x300000 or not 0<boot.stat().st_size<=0x8000:
+    slots=[p for p in expected_layout() if p["type"]==0 and p["subtype"] in (16,17)]
+    # Arduino's current FQBN reports a conservative 3 MiB application limit.
+    if len(slots)!=2 or not 0<app.stat().st_size<=min(0x300000,*(p["size"] for p in slots)) or not 0<boot.stat().st_size<=0x8000:
         raise ValueError("firmware exceeds partition limits")
     for p in (app,boot):
         validate_esp_image(p.read_bytes())
@@ -109,7 +111,7 @@ def firmware_evidence(bins,source_commit):
     if any(b != 0xff for b in padding):
         raise ValueError("invalid compiled partition image padding")
     if len(data)!=TABLE_BYTES or parse_table(data)!=expected_layout():
-        raise ValueError("compiled partition table does not match experimental CSV")
+        raise ValueError("compiled partition table does not match observed K151 CSV")
     return dict(schema=2,initial_ota=dict(name="ota_data_initial.bin",size=len(initial_ota_data()),sha256=hashlib.sha256(initial_ota_data()).hexdigest(),expected_slot="ota_0"),kind="compile-evidence-only",board="M5Stack StackChan K151",
                 source_commit=source_commit,flash_authorized=False,restore_authorized=False,
                 factory_compatible=False,files=[dict(name=p.name,size=p.stat().st_size,sha256=sha256(p)) for p in paths],

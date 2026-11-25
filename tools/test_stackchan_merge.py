@@ -19,8 +19,8 @@ class MergeTests(unittest.TestCase):
             data,report=assemble(candidate)
             self.assertEqual(data[:len(image())],image())
             self.assertEqual(data[0x8000:0x8000+len(table())],table())
-            self.assertEqual(data[0x9000:0x10000],b"\xff"*0x7000)
-            self.assertEqual(data[0x10000:0x10000+len(image())],image())
+            self.assertEqual(data[0x9000:0x20000],b"\xff"*0x17000)
+            self.assertEqual(data[0x20000:0x20000+len(image())],image())
             self.assertEqual(len(data)%4096,0)
             self.assertFalse(report["flash_authorized"])
             out=root/"merged"

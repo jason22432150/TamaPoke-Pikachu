@@ -49,10 +49,12 @@ open/close and USB behavior also require physical validation. Stop if the port c
 
 Probe only reads chip identity, eFuse summary, security, flash capacity and
 the partition table. It requires a new private directory and will fail if
-the current layout differs from the experimental one. That is expected
-for some factory devices; do not erase or repartition to bypass it.
+the current layout differs from the observed K151 layout. Do not erase or
+repartition to bypass it. The previous b9b13c0 candidate had a different
+layout; use a new matching-commit candidate after CI passes.
 If the chip and security checks pass, layout-report.json records both
-partition tables and their match status, even when they differ. This report
+partition tables and their match status, even when they differ. It also
+reports whether the candidate-length table bytes match exactly. This report
 omits MAC and eFuse values and can be provided for layout review. If the
 probe fails earlier, report only the error message. Do not share the private
 before/ snapshot, raw eFuse summary, or MAC addresses publicly.
@@ -88,8 +90,12 @@ device partition layout and hardware behavior are not established.
 Once a separately reviewed build is approved by maintainers, the installer
 will require the exact source commit and all four image digests, explicit
 acknowledgement of download mode, same-device identity and compatible layout.
-It will write separated images, read back exact byte ranges and compare the
-eFuse summary before permitting the operator to proceed. No automatic hard
+It will require exact existing table bytes before writing and will not rewrite
+the partition table. Only bootloader (0x0), OTA selection (0xd000) and ota_0
+application (0x20000) are written; the OTA selection is reset to erased bytes.
+NVS, PHY init, ota_1, assets and coredump are not directly erased by these
+writes. First boot can still change data in Flash. The installer reads back
+all four image regions and compares eFuse summaries before proceeding. No automatic hard
 reset is requested. A hardware-specific download-mode/USB reset procedure
 must be validated to ensure that the application cannot boot prematurely.
 After an explicitly supervised first boot, manually re-enter ROM download mode;

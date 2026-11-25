@@ -1,6 +1,7 @@
 # StackChan K151 experimental port
-This branch is NOT ready to flash. The diagnostic uses a provisional standalone
-16 MiB partition layout, NOT the factory layout. Security state and actual partition map must be checked on the target unit first.
+This branch is NOT ready to flash. The 16 MiB candidate layout now matches the user-provided read-only K151
+partition report. It is not a general factory-compatibility claim. Security
+state and exact partition bytes must still be checked on the target unit.
 Full factory backup is optional. Factory firmware restoration is outside project scope.
 StackChan installation is local USB only, using tools/stackchan_flash.py.
 No web installer, browser flashing or Pages deployment is supported for K151.
@@ -125,7 +126,7 @@ After capturing a private factory archive, run:
     python3 tools/stackchan_review.py archive --out ~/k151-factory-backup
 
 This re-verifies hashes, reads captured security reports, compares the actual
-candidate partition map to the experimental layout and lists remaining blockers.
+candidate partition map to the observed K151 layout and lists remaining blockers.
 It does not connect to hardware or authorize a restore, even if all historical
 reports match. No write/erase/eFuse commands are provided.
 The full game build validates application/bootloader image magic and size,
@@ -323,6 +324,14 @@ This compares two verified historical captures of the same MAC and a validated c
 Factory restoration, restoration testing and restoration instructions are outside project scope. Existing read-only archive tools remain optional. Historical review reports do not authorize writes. No eFuse programming, secure boot provisioning, flash encryption provisioning, eFuse anti-rollback or forced flashing is permitted. Check the actual build configuration and bootloader provenance, and compare read-only eFuse summaries before and after flashing and first boot. A passing compile or static check is not proof that hardware eFuses remain unchanged.
 
 ## Alpha 0.1.0 local USB candidate installation
+
+The observed K151 layout reserves NVS at 0x9000 (16 KiB), OTA data at
+0xd000, PHY init at 0xf000, ota_0 at 0x20000 and ota_1 at 0x510000,
+assets at 0xa00000 and coredump at 0xe00000. The installer preserves the
+existing partition table, requires exact matching bytes, and writes only
+bootloader, OTA selection and ota_0 when a build is independently approved.
+Do not use old experimental-layout artifacts or merged images for installation.
+
 See [ALPHA_INSTALL.md](ALPHA_INSTALL.md) for macOS preparation and read-only
 bench preflight. CI now requests a separated candidate artifact explicitly
 labeled NOT-FOR-FLASH. The build re-converts the selected SDK bootloader ELF

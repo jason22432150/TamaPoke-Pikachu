@@ -48,6 +48,7 @@ class FlashTests(unittest.TestCase):
                 elif "write-flash" in args:
                     self.assertIn("no-reset",args)
                     i=args.index("write-flash")+7
+                    self.assertEqual([int(x,16) for x in args[i::2]],[0,0xd000,0x20000])
                     for offset,name in zip(args[i::2],args[i+1::2]):
                         memory[int(offset,16)]=Path(name).read_bytes()
                     report="simulated write"
@@ -62,7 +63,7 @@ class FlashTests(unittest.TestCase):
                 self.assertEqual(install(c,"/dev/cu.usbmodem1",out,True,serial)["changed_fields"],[])
                 self.assertEqual(after_boot("/dev/cu.usbmodem1",out,serial)["status"],"observable-summary-unchanged")
             self.assertEqual(sum("write-flash" in cmd for cmd in commands),1)
-            self.assertEqual(sum("read-flash" in cmd for cmd in commands),5)
+            self.assertEqual(sum("read-flash" in cmd for cmd in commands),6)
 
     def test_readonly_layout_mismatch(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -89,6 +90,7 @@ class FlashTests(unittest.TestCase):
                 probe(c,"/dev/cu.usbmodem1",out,serial)
             report=json.loads((out/"layout-report.json").read_text())
             self.assertFalse(report["layout_matches"])
+            self.assertFalse(report["table_bytes_match"])
             self.assertFalse(report["flash_authorized"])
             self.assertFalse(report["efuse_write_allowed"])
             self.assertNotIn("mac",report)

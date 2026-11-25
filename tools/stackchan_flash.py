@@ -55,11 +55,12 @@ def probe(candidate,port,out,runner=run_logged,snapshot=capture):
     if not re.search(r"Detected flash size:\s*16\s*MB\b",flash,re.I):
         raise ValueError("expected 16 MiB flash")
     table=out/"current-partitions.bin"
-    run(["read-flash","0x8000",hex(TABLE_BYTES),str(table)],"partitions.log")
-    if table.stat().st_size!=TABLE_BYTES:
+    compiled_table=(candidate/"TamaPoke.ino.partitions.bin").read_bytes()
+    run(["read-flash","0x8000",hex(len(compiled_table)),str(table)],"partitions.log")
+    if table.stat().st_size!=len(compiled_table):
         raise ValueError("incomplete device partition table")
-    actual=parse_table(table.read_bytes())
-    expected=parse_table((candidate/"TamaPoke.ino.partitions.bin").read_bytes()[:TABLE_BYTES])
+    actual=parse_table(table.read_bytes()[:TABLE_BYTES])
+    expected=parse_table(compiled_table[:TABLE_BYTES])
     if mac_of(run(["read-mac"],"mac-probe-end.txt"))!=baseline["mac"]:
         raise ValueError("different device")
     if plan(candidate)!=p:
@@ -67,7 +68,8 @@ def probe(candidate,port,out,runner=run_logged,snapshot=capture):
     # Shareable layout-only report: no MAC, key values or raw eFuse contents.
     report=dict(schema=1,source_commit=p["source_commit"],chip="esp32s3",
                 flash_bytes=p["flash_bytes"],secure_boot="disabled",flash_encryption="disabled",
-                layout_matches=actual==expected,current_partitions=actual,
+                layout_matches=actual==expected,table_bytes_match=table.read_bytes()==compiled_table,
+                current_partitions=actual,
                 candidate_partitions=expected,flash_authorized=False,efuse_write_allowed=False)
     with (out/"layout-report.json").open("x",encoding="utf-8") as dst:
         json.dump(report,dst,indent=2)
@@ -91,8 +93,20 @@ def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture):
     def run(args,name):return runner(cmd+args,out/name)
     if mac_of(run(["read-mac"],"mac-write.txt"))!=baseline["mac"]:
         raise ValueError("different device")
+    # Never rewrite the partition table. Verify its exact candidate-length
+    # bytes again on the same device before any flash write.
+    table_name="TamaPoke.ino.partitions.bin"
+    expected_table=(staged/table_name).read_bytes()
+    if (out/"current-partitions.bin").read_bytes()!=expected_table:
+        raise ValueError("existing partition table differs byte-for-byte; no write")
+    latest=out/"partitions-before-write.bin"
+    run(["read-flash","0x8000",hex(len(expected_table)),str(latest)],"partitions-before-write.log")
+    if latest.read_bytes()!=expected_table:
+        raise ValueError("partition table changed before write")
     args=["write-flash","--flash-mode","keep","--flash-freq","keep","--flash-size","keep"]
-    for r in p["regions"]:args.extend([hex(r["offset"]),str(staged/r["name"])])
+    for r in p["regions"]:
+        if r["name"]!=table_name:
+            args.extend([hex(r["offset"]),str(staged/r["name"])])
     run(args,"write.log")
     # No hard reset. Operator must hold the device in download mode until
     # readback and the second eFuse capture complete.

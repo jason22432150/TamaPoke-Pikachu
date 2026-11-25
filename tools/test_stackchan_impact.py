@@ -27,7 +27,7 @@ class ImpactTests(unittest.TestCase):
             self.assertEqual(nvs["label"],"nvs")
             self.assertTrue(nvs["exact_layout_match"])
             self.assertEqual(nvs["separate_erase_bytes"],0)
-            self.assertEqual(nvs["merged_erase_bytes"],0x5000)
+            self.assertEqual(nvs["merged_erase_bytes"],0x4000)
             self.assertFalse(result["flash_authorized"])
             self.assertFalse(result["restore_authorized"])
             self.assertIn("merged prefix erases data partition sectors",result["blockers"])
