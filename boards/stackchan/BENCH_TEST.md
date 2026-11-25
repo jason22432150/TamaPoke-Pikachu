@@ -17,9 +17,24 @@ Installer approval commit 111ee286ab7350821f7ce8062d673c243c1416d3.
 - PASS (owner report): BODY CALIBRATION, START, BODY CHECK returned expected
   results. Actual raw calibration values were not supplied, and comparison
   against independent factory reference is NOT RUN.
-- NOT RUN or not yet reported: detailed gameplay, all UI screens, audio, RTC,
-  SD, RGB, persistence, motion preview, 60-minute stability and final
-  post-game eFuse comparison. Physical motors remain disabled.
+- PASS (owner report): calibration read yaw=460 pitch=620, present-unverified,
+  motor=disabled; independent factory reference comparison remains NOT RUN.
+- PASS (read only): TIME returned rtc=1795602941 (2026-11-25 10:35:41 UTC).
+  Clock accuracy, set and reboot retention remain unverified.
+- Single PERF? sample: uptime 2120771 ms, heap 296688, minimum 296028,
+  largest internal block 253940, free PSRAM 7943376 / 8388608,
+  largest PSRAM block 7864308, CPU 240 MHz, reset 11 (ESP_RST_USB).
+  This is not a continuous stability or leak test.
+- SDINFO total=0 used=0 with no reported inserted card; actual SD mount
+  and sprite loading remain NOT RUN.
+- RGB ON request accepted, BODY CHECK rgb=1. Visible LED output, transitions
+  and RGB OFF remain unverified.
+- Motion preview OFF acknowledged, prior BODY CHECK preview=0 active=0
+  hardware=disabled. Preview ON and reaction behavior remain NOT RUN.
+- NOT RUN or not yet reported: detailed gameplay, all UI screens, audio,
+  RTC retention, SD media, RGB visual behavior, persistence, motion preview ON,
+  60-minute stability and final post-game eFuse comparison.
+  Physical motors remain disabled.
 
 Preserve this exact installed firmware while testing. A fresh CI artifact is
 not automatically approved.
