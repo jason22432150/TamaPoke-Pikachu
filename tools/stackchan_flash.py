@@ -14,14 +14,14 @@ from stackchan_review import security_state
 from stackchan_deploy_review import plan, readback, checkpoints
 
 # Only maintainers can add independently audited (commit, bootloader, app,
-# partition table, initial OTA data, assets) tuples. No CLI override. Empty for Alpha.
+# partition table, initial OTA data) tuples. No CLI override. Empty for Alpha.
 APPROVED_BUILDS=frozenset()
 
 def identity(p):
     by_name={r["name"]:r["sha256"] for r in p["regions"]}
     return (p["source_commit"],*(by_name[n] for n in (
         "TamaPoke.ino.bootloader.bin","TamaPoke.ino.bin",
-        "TamaPoke.ino.partitions.bin","ota_data_initial.bin","tamapoke_assets.bin")))
+        "TamaPoke.ino.partitions.bin","ota_data_initial.bin")))
 
 def require_approved(p):
     if identity(p) not in APPROVED_BUILDS:

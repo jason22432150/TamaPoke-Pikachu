@@ -10,7 +10,7 @@ from stackchan_flash import install,serial_prefix,probe,identity,after_boot,rom_
 from test_stackchan_efuse import runner as efuse_runner
 from stackchan_deploy_review import plan,check_sdkconfig,efuse_symbol_inventory,rom_write_references,efuse_mmio_literals,mmio_literal_context
 from stackchan_package import package
-from test_stackchan_review import image,table,asset_fixture
+from test_stackchan_review import image,table
 
 class FlashTests(unittest.TestCase):
     def test_unapproved_never_opens_serial(self):
@@ -19,7 +19,6 @@ class FlashTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
-            asset_fixture(bins)
             c=root/"candidate";package(bins,c,"a"*40)
             def never(*args,**kwargs):raise AssertionError("unexpected device access")
             with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
@@ -36,7 +35,6 @@ class FlashTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
-            asset_fixture(bins)
             c=root/"candidate";package(bins,c,"a"*40)
             p=plan(c);memory={0x8000:table()};commands=[]
             fake_efuse=efuse_runner()
@@ -54,7 +52,7 @@ class FlashTests(unittest.TestCase):
                     self.assertIn("--no-stub",args)
                     self.assertEqual(args[1:3],["-c",ROM_WRITE_LAUNCHER])
                     i=args.index("write-flash")+7
-                    self.assertEqual([int(x,16) for x in args[i::2]],[0,0xd000,0x20000,0xa00000])
+                    self.assertEqual([int(x,16) for x in args[i::2]],[0,0xd000,0x20000])
                     for offset,name in zip(args[i::2],args[i+1::2]):
                         memory[int(offset,16)]=Path(name).read_bytes()
                     report="simulated write"
@@ -69,7 +67,7 @@ class FlashTests(unittest.TestCase):
                 self.assertEqual(install(c,"/dev/cu.usbmodem1",out,True,serial)["changed_fields"],[])
                 self.assertEqual(after_boot("/dev/cu.usbmodem1",out,serial)["status"],"observable-summary-unchanged")
             self.assertEqual(sum("write-flash" in cmd for cmd in commands),1)
-            self.assertEqual(sum("read-flash" in cmd for cmd in commands),7)
+            self.assertEqual(sum("read-flash" in cmd for cmd in commands),6)
 
     def test_readonly_layout_mismatch(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -77,7 +75,6 @@ class FlashTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
-            asset_fixture(bins)
             c=root/"candidate";package(bins,c,"a"*40)
             raw=bytearray(table())
             raw[12:15]=b"old"
@@ -110,7 +107,6 @@ class FlashTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
-            asset_fixture(bins)
             c=root/"candidate";package(bins,c,"a"*40)
             raw=bytearray(table())
             # Change unused bytes after the first NUL in the NVS label;
@@ -142,7 +138,6 @@ class FlashTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
-            asset_fixture(bins)
             c=root/"candidate";package(bins,c,"a"*40)
             fake=efuse_runner(crypt_count=3)
             def serial(args,log):

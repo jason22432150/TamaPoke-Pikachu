@@ -4,7 +4,7 @@ import unittest
 import json
 from stackchan_merge import assemble,create,verify
 from stackchan_package import package
-from test_stackchan_review import image,table,asset_fixture
+from test_stackchan_review import table,image
 
 class MergeTests(unittest.TestCase):
     def test_roundtrip(self):
@@ -14,7 +14,6 @@ class MergeTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
-            asset_fixture(bins)
             candidate=root/"candidate"
             package(bins,candidate,"a"*40)
             data,report=assemble(candidate)
@@ -22,9 +21,6 @@ class MergeTests(unittest.TestCase):
             self.assertEqual(data[0x8000:0x8000+len(table())],table())
             self.assertEqual(data[0x9000:0x20000],b"\xff"*0x17000)
             self.assertEqual(data[0x20000:0x20000+len(image())],image())
-            self.assertEqual(len(data),0xe00000)
-            self.assertEqual(data[0xa00000:0xe00000],(candidate/'tamapoke_assets.bin').read_bytes())
-            self.assertEqual(report['regions'][-1]['capacity'],0x400000)
             self.assertEqual(len(data)%4096,0)
             self.assertFalse(report["flash_authorized"])
             out=root/"merged"

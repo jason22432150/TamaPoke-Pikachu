@@ -5,7 +5,7 @@ import json
 import struct
 import unittest
 from stackchan_package import package,verify_package,combine,app_idf_version,IDF_PIN,SOURCE_FILES,require_clean_efuse_screen
-from test_stackchan_review import image,table,asset_fixture
+from test_stackchan_review import table,image
 
 class PackageTests(unittest.TestCase):
     def test_roundtrip_and_failures(self):
@@ -15,7 +15,6 @@ class PackageTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
-            asset_fixture(bins)
             out=root/"candidate"
             m=package(bins,out,"a"*40)
             self.assertEqual(verify_package(out),m)
@@ -27,11 +26,6 @@ class PackageTests(unittest.TestCase):
             ota.write_bytes(b"\0"+b"\xff"*8191)
             with self.assertRaises(ValueError):verify_package(out)
             ota.write_bytes(b"\xff"*8192)
-            assets=out/"tamapoke_assets.bin"
-            original=assets.read_bytes()
-            assets.write_bytes(original[:-1]+b"\x00")
-            with self.assertRaises(ValueError):verify_package(out)
-            assets.write_bytes(original)
             extra=out/"unexpected.bin";extra.write_bytes(b"x")
             with self.assertRaises(ValueError):verify_package(out)
             extra.unlink()
@@ -60,7 +54,6 @@ class PackageTests(unittest.TestCase):
             (bins/"TamaPoke.ino.bin").write_bytes(app)
             (bins/"TamaPoke.ino.bootloader.bin").write_bytes(old_boot)
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
-            asset_fixture(bins)
             candidate=root/"candidate";package(bins,candidate,"a"*40)
             src=root/"source";src.mkdir()
             for name in SOURCE_FILES:

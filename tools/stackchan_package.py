@@ -11,16 +11,15 @@ from pathlib import Path
 import shutil
 import sys
 from stackchan_review import firmware_evidence, initial_ota_data, validate_esp_image
-from stackchan_assets import NAME as ASSETS_NAME
 
 IDF_PIN="051e4c4eb20346e043cdd47bc388fde75ff8af63"
 SOURCE_FILES=("bootloader.bin","bootloader.elf","sdkconfig","bootloader-sdkconfig.h")
 
 NOTICE = """EXPERIMENTAL K151 BENCH CANDIDATE -- NOT APPROVED FOR FLASH
-This package includes a full TamaPoke assets partition image; it replaces all factory assets.
+This package has three compiled images, not a complete flash image.
 An erased initial OTA selection image is included for offline review only.
 No factory image, installer or restore command is included.
-The partition layout is preserved. Verify current security, actual layout,
+The partition layout is experimental. Verify current security, actual layout,
 Bootloader safety and exact build approval before any write.
 Passing package verification does not authorize flashing.
 """
@@ -153,10 +152,6 @@ def combine(candidate,source_bootloader,arduino_evidence,out):
         if hashlib.sha256(table).hexdigest()!=by_name["TamaPoke.ino.partitions.bin"]:
             raise ValueError("partition image changed")
         (bins/"TamaPoke.ino.partitions.bin").write_bytes(table)
-        assets=(candidate/ASSETS_NAME).read_bytes()
-        if hashlib.sha256(assets).hexdigest()!=by_name[ASSETS_NAME]:
-            raise ValueError("assets image changed")
-        (bins/ASSETS_NAME).write_bytes(assets)
         paired=package(bins,out,old["source_commit"])
     return dict(schema=1,kind="source-bootloader-paired-candidate",
                 source_commit=old["source_commit"],idf_commit=IDF_PIN,

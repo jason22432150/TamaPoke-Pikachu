@@ -6,7 +6,6 @@
 #include <SPI.h>
 #include <SD.h>
 #include "sd_upload_policy.h"
-#include "assets_flash.h"
 static fs::FS &SpriteFS = SD;
 static bool allowSdWrites=false;
 #elif BOARD_AMOLED_175C
@@ -40,21 +39,11 @@ bool PmdMon::load(uint8_t dexNum, bool shiny) {
   if (f) {
     size = f.size();
   } else {
-#if BOARD_STACKCHAN
-    if(dexNum>=1 && dexNum<=151) {
-      blob=tpkassets::load(dexNum+(shiny?151:0),size);
-      if(!blob && shiny)blob=tpkassets::load(dexNum,size);
-      if(blob)Serial.printf("Flash asset #%u shiny=%u\n",dexNum,shiny);
-    }
-#endif
-    if(!blob) {
-      embedded = embeddedMonData(dexNum, shiny, size);
-      if (!embedded) return false;
-      Serial.printf("Embedded sprite #%u shiny=%u\n", dexNum, shiny);
-    }
+    embedded = embeddedMonData(dexNum, shiny, size);
+    if (!embedded) return false;
+    Serial.printf("Embedded sprite #%u shiny=%u\n", dexNum, shiny);
   }
-  if (size < 7 || size > 3UL * 1024 * 1024) { f.close(); unload(); return false; }
-  if(!blob) {
+  if (size < 7 || size > 3UL * 1024 * 1024) { f.close(); return false; }
   blob = (uint8_t *)ps_malloc(size);
   if (!blob) { f.close(); return false; }
   if (embedded) {
@@ -63,7 +52,6 @@ bool PmdMon::load(uint8_t dexNum, bool shiny) {
     unload();
     f.close();
     return false;
-  }
   }
   f.close();
   if (memcmp(blob, "TPK2", 4) != 0) { unload(); return false; }
@@ -132,25 +120,21 @@ void SdThumbs::unload() {
 
 bool SdThumbs::load() {
   unload();  // recargar sin fugar el blob anterior
-  File f;
-  if(sdReady)f=SpriteFS.open("/mons/thumbs.bin", FILE_READ);
-  uint32_t sz=0;
-#if BOARD_STACKCHAN
-  if(!f)data=tpkassets::load(0,sz);
-#endif
-  if (!f && !data) {
+  if (!sdReady) return false;
+  File f = SpriteFS.open("/mons/thumbs.bin", FILE_READ);
+  if (!f) {
     Serial.println("sin thumbs.bin (galeria sin miniaturas)");
     return false;
   }
-  if(f)sz=f.size();
+  uint32_t sz = f.size();
   // acota el tamano: evita un ps_malloc absurdo con un archivo corrupto
   if (sz < 10 || sz > 2UL * 1024 * 1024) {
     Serial.println("thumbs.bin invalido (tamano)");
-    f.close(); unload();
+    f.close();
     return false;
   }
-  if(f)data = (uint8_t *)ps_malloc(sz);
-  if (!data || (f && f.read(data, sz) != sz) || memcmp(data, "TPTH", 4) != 0) {
+  data = (uint8_t *)ps_malloc(sz);
+  if (!data || f.read(data, sz) != sz || memcmp(data, "TPTH", 4) != 0) {
     Serial.println("thumbs.bin invalido");
     if (data) { free(data); data = nullptr; }
     f.close();
@@ -186,7 +170,6 @@ bool sdBegin() {
 #if BOARD_STACKCHAN
   SPI.begin(36,35,37,4);
   sdReady=SD.begin(4,SPI,4000000);
-  Serial.printf("TamaPoke flash assets: %s\n",tpkassets::ready()?"ready":"unavailable");
 #elif BOARD_AMOLED_175C
   // Do not auto-format: a failed mount almost always means the LittleFS image
   // has not been flashed yet, and formatting would wipe a later write.
@@ -346,7 +329,6 @@ static void stackChanPut(const String& line) {
 #endif
 bool sdSerialCommand(const String &line) {
 #if BOARD_STACKCHAN
-  if(line=="ASSETINFO") { Serial.printf("flash_assets=%u capacity=%u\n",unsigned(tpkassets::ready()),unsigned(tpkassets::Capacity)); Serial.println("DONE"); return true; }
   if(line=="SDWRITE ON" && sdReady) { allowSdWrites=SD.exists("/mons") || SD.mkdir("/mons"); Serial.println(allowSdWrites?"DONE":"ERR"); return true; }
   if(line=="SDWRITE OFF") { allowSdWrites=false; Serial.println("DONE"); return true; }
   if(line.startsWith("PUT ")) { stackChanPut(line); return true; }

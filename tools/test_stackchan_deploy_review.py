@@ -5,7 +5,7 @@ import shutil
 from stackchan_deploy_review import plan,readback,checkpoints,mmio_instruction_window
 from stackchan_package import package
 from stackchan_efuse import capture
-from test_stackchan_review import image,table,asset_fixture
+from test_stackchan_review import image,table
 from test_stackchan_efuse import runner
 
 class DeploymentTests(unittest.TestCase):
@@ -15,13 +15,12 @@ class DeploymentTests(unittest.TestCase):
             for name in ("TamaPoke.ino.bin","TamaPoke.ino.bootloader.bin"):
                 (bins/name).write_bytes(image())
             (bins/"TamaPoke.ino.partitions.bin").write_bytes(table())
-            asset_fixture(bins)
             candidate=root/"candidate"
             package(bins,candidate,"a"*40)
             p=plan(candidate)
             self.assertFalse(p["flash_authorized"])
             self.assertFalse(p["efuse_write_allowed"])
-            self.assertEqual([r["offset"] for r in p["regions"]],[0,0x8000,0xd000,0x20000,0xa00000])
+            self.assertEqual([r["offset"] for r in p["regions"]],[0,0x8000,0xd000,0x20000])
             self.assertEqual(p["regions"][1]["erase_end"],0x9000)
             self.assertEqual(p["regions"][2]["erase_end"],0xf000)
             out=root/"readback";out.mkdir()

@@ -60,7 +60,6 @@ mkdir -p "$REPORT"
 rm -f "$REPORT/manifest.json" "$REPORT/boot-evidence.json" "$REPORT/TamaPoke.ino.elf" "$REPORT/TamaPoke.ino.map" "$REPORT/sdkconfig"
 python3 "$ROOT/tools/stackchan_deploy_review.py" boot-evidence --properties "$STAGE/properties.txt" \
   --build-dir "$WORK" --bins "$BIN" --commit "$(git -C "$ROOT" rev-parse HEAD)" --report "$REPORT/boot-evidence.json"
-python3 "$ROOT/tools/stackchan_assets.py" "$BIN/tamapoke_assets.bin"
 python3 "$ROOT/tools/stackchan_review.py" firmware --bins "$BIN" \
   --commit "$(git -C "$ROOT" rev-parse HEAD)" --report "$REPORT/manifest.json"
 # Preserve the exact ELF inspected above, not an ELF from a later rebuild.

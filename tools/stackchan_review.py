@@ -9,7 +9,6 @@ from pathlib import Path
 import re
 import sys
 from stackchan_backup import ARCHIVE, TABLE_BYTES, parse_table, sha256, verify
-from stackchan_assets import NAME as ASSETS_NAME, SIZE as ASSETS_SIZE, verify_image as verify_assets
 
 ROOT=Path(__file__).resolve().parents[1]
 LAYOUT=ROOT/"boards/stackchan/partitions.csv"
@@ -113,12 +112,7 @@ def firmware_evidence(bins,source_commit):
         raise ValueError("invalid compiled partition image padding")
     if len(data)!=TABLE_BYTES or parse_table(data)!=expected_layout():
         raise ValueError("compiled partition table does not match observed K151 CSV")
-    assets=bins/ASSETS_NAME
-    if assets.is_symlink() or not assets.is_file() or assets.stat().st_size!=ASSETS_SIZE:
-        raise ValueError("missing or invalid full TamaPoke assets image")
-    report=verify_assets(assets.read_bytes())
-    paths.append(assets)
-    return dict(schema=3,assets=report,initial_ota=dict(name="ota_data_initial.bin",size=len(initial_ota_data()),sha256=hashlib.sha256(initial_ota_data()).hexdigest(),expected_slot="ota_0"),kind="compile-evidence-only",board="M5Stack StackChan K151",
+    return dict(schema=2,initial_ota=dict(name="ota_data_initial.bin",size=len(initial_ota_data()),sha256=hashlib.sha256(initial_ota_data()).hexdigest(),expected_slot="ota_0"),kind="compile-evidence-only",board="M5Stack StackChan K151",
                 source_commit=source_commit,flash_authorized=False,restore_authorized=False,
                 factory_compatible=False,files=[dict(name=p.name,size=p.stat().st_size,sha256=sha256(p)) for p in paths],
                 partitions=expected_layout())

@@ -36,7 +36,6 @@ jobs:
       - run: python3 tools/test_stackchan_perf_report.py
       - run: python3 tools/test_stackchan_backup.py
       - run: python3 tools/test_stackchan_review.py
-      - run: python3 tools/test_stackchan_assets.py
       - run: python3 tools/test_stackchan_package.py
       - run: python3 tools/test_stackchan_merge.py
       - run: python3 tools/test_stackchan_impact.py
