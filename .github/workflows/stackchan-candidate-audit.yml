@@ -1,0 +1,119 @@
+name: StackChan fixed candidate ELF audit
+on:
+  push:
+    branches: [stackchan]
+    paths:
+      - .github/workflows/stackchan-candidate-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v6.1.1
+    steps:
+      # Use archived build inputs, not new binaries from a rebuild.
+      - uses: actions/download-artifact@v4
+        with:
+          name: stackchan-K151-game-compile-evidence-NOT-FOR-FLASH
+          github-token: ${{ github.token }}
+          run-id: 45554127667
+          path: /tmp/k151-review/app
+      - uses: actions/download-artifact@v4
+        with:
+          name: stackchan-source-bootloader-NOT-FOR-FLASH
+          github-token: ${{ github.token }}
+          run-id: 45554127667
+          path: /tmp/k151-review/boot
+      - uses: actions/download-artifact@v4
+        with:
+          name: stackchan-alpha-0.1.0-source-bootloader-NOT-FOR-FLASH
+          github-token: ${{ github.token }}
+          run-id: 45554127667
+          path: /tmp/k151-review/paired
+      - name: Verify fixed source and artifact identity
+        shell: bash
+        run: |
+          cd /tmp/k151-review
+          sha256sum -c <<'HASHES'
+          e0c54e98a8ec056f9801abb853518348954e78551ae47f0be16bba4f5cddaf25  boot/bootloader.elf
+          8a7d2bb8a3ea22e1b8d9d44c2ec0e965727231066feda335234a16ac8ea0de0a  boot/bootloader.bin
+          796cd0b9490b6ea13b57a28eadd10d2b272f88ac8924eb2eb1ff1eebfa380b58  boot/sdkconfig
+          58fe61ac2b2f77996a5c6acd7cc79dcb4c4138e39d91b7190ef2d4a90a6c16a4  boot/bootloader-sdkconfig.h
+          25517a76243484c7b89f65b50c698f90d3300bae25bc904f3ff7df750608395f  app/TamaPoke.ino.elf
+          bc2c78fc1780e2c554fe96ae724ea69a606bc8344de3989ab63a6ce8e13ac063  app/TamaPoke.ino.map
+          a635f5a6c6f64e1fbc2d7de36d58269d145f70e272220205445dd8b45c9f2035  app/sdkconfig
+          d0d54b1feab01787a8b36f606b00f29ede2f4375d5b8b1c48577a83b8644ed2b  paired/TamaPoke.ino.bin
+          8a7d2bb8a3ea22e1b8d9d44c2ec0e965727231066feda335234a16ac8ea0de0a  paired/TamaPoke.ino.bootloader.bin
+          48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b  paired/TamaPoke.ino.partitions.bin
+          7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f  paired/ota_data_initial.bin
+          HASHES
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          commit="bb5234ef25ca5903309028b76afcbc29dc414011"
+          for p in ("boot/manifest.json","app/boot-evidence.json","paired/manifest.json"):
+              d=json.loads(Path(p).read_text())
+              if d["source_commit"]!=commit or d["flash_authorized"] is not False:
+                  raise SystemExit("unexpected audit input: "+p)
+          PY
+      - name: Disassemble exact ELF files and extract complete eFuse reference functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$IDF_PATH"
+          test "$(git -C "$IDF_PATH" rev-parse HEAD)" = 051e4c4eb20346e043cdd47bc388fde75ff8af63
+          source "$IDF_PATH/export.sh"
+          cd /tmp/k151-review
+          mkdir report
+          xtensa-esp32s3-elf-objdump --version | head -n 1
+          for spec in boot/bootloader.elf app/TamaPoke.ino.elf; do
+            name=${spec%%/*}
+            xtensa-esp32s3-elf-objdump -d --no-show-raw-insn "$spec" > "report/$name.disassembly.txt"
+            xtensa-esp32s3-elf-nm --defined-only --format=posix "$spec" > "report/$name.symbols.txt"
+          done
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          inputs=(
+              ("boot", "boot/manifest.json","bootloader_efuse_symbols"),
+              ("app", "app/boot-evidence.json","application_efuse_symbols"))
+          result={"source_commit":"bb5234ef25ca5903309028b76afcbc29dc414011",
+                  "flash_authorized":False,"safety_attested":False,"images":{}}
+          for name,source,key in inputs:
+              evidence=json.loads(Path(source).read_text())[key]
+              wanted=set()
+              for literal in evidence["rom_references"]["literal_context"]:
+                  for load in literal["explicit_literal_loads"]:
+                      wanted.add(int(load["instruction_address"],16))
+              seen=set();functions=[];label=None;body=[];matched=False
+              def finish():
+                  if label is not None and (matched or re.search(r"efuse|rtc_init|initArduino",label,re.I)):
+                      functions.append(label+"\n"+"\n".join(body))
+              for line in Path(f"report/{name}.disassembly.txt").read_text().splitlines():
+                  m=re.match(r"^\s*[0-9a-fA-F]+ <(.+)>:$",line)
+                  if m:
+                      finish()
+                      label=line;body=[];matched=False
+                  else:
+                      body.append(line)
+                      a=re.match(r"^\s*([0-9a-fA-F]+):",line)
+                      if a and int(a[1],16) in wanted:
+                          seen.add(int(a[1],16));matched=True
+              finish()
+              if seen!=wanted or not wanted or not functions:
+                  raise SystemExit("could not locate all known eFuse references in "+name)
+              Path(f"report/{name}.efuse-functions.txt").write_text("\n\n".join(functions)+"\n")
+              result["images"][name]={"known_reference_count":len(wanted),
+                                      "complete_function_count":len(functions)}
+          print(json.dumps(result,indent=2))
+          Path("report/audit.json").write_text(json.dumps(result,indent=2)+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stackchan-bb5234e-exact-ELF-disassembly-NOT-FOR-FLASH
+          path: /tmp/k151-review/report/
+          if-no-files-found: error
+          retention-days: 14
