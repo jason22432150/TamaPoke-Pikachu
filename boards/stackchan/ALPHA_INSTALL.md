@@ -3,11 +3,10 @@
 StackChan installation is local only. Do not use the upstream Waveshare web
 installer, Chrome/Edge Web Serial, or any browser-based flashing workflow.
 
-**Status: no candidate currently approved for a new Flash write.**
+**Status: exact DMA-fix candidate 871e6d8 approved for supervised ROM-only installation, not yet hardware boot-tested.**
 The original bb5234e candidate was installed and failed to boot with a GDMA/SPI
 panic. Its installation approval is withdrawn; historical read-only checkpoint
-verification remains supported. The DMA fix at 871e6d8 passed build CI and
-requires exact archived artifact review before a new write.
+verification remains supported. The DMA fix at 871e6d8 passed build CI and exact archived ELF review.
 Do not bypass the installer approval gate, run a manual flash command or use force. No factory restoration
 or NVS migration is provided. Physical motors and online OTA stay disabled.
 
@@ -23,6 +22,12 @@ Install Python 3.11+ and Git using their official distribution. In Terminal:
 
 This downloads the experimental branch and isolates the exact serial tool
 version from your system Python. It does not connect to the device.
+
+Current installation: use only the paired archive from run 45581224571,
+artifact 15007091688, source commit 871e6d8851c6b7348bbf5a0d71a80affa10e1e32.
+Use a new private OUT directory and keep the first failed-boot record intact.
+The NOT-FOR-FLASH label is historical build evidence; the exact installer
+allowlist is authoritative. All other new builds are unapproved.
 
 Historical installation record (do not reinstall): the archived source-bootloader
 paired candidate from run 45554127667, artifact 14995636144, source commit
@@ -104,9 +109,8 @@ Local K151 builds must apply the pinned patch after installing M5GFX:
 
 This modifies only the pinned M5GFX library source; use a dedicated Arduino
 library directory if also building other boards locally. CI checks the patch
-and leaves Waveshare builds unchanged. New firmware still needs exact
-artifact safety review and approval; do not reuse the old candidate for
-another write. If boot fails, enter ROM download mode and run after-boot
+and leaves Waveshare builds unchanged. The exact 871e6d8 archive is now reviewed and allowed; do not reuse the
+old candidate for another write. If boot fails, enter ROM download mode and run after-boot
 using the original installation directory before further tests.
 
 ## Source bootloader reference (build only)
@@ -193,6 +197,25 @@ reports v6.1.1-dirty; first boot remains untested.
 This reviewed tuple has been withdrawn from new installations because of the
 hardware boot failure. Only historical read-only verification is retained.
 
+### DMA-fix exact binary review
+
+Run 45584713403, artifact 15007403051, verifies the 11 archived file
+hashes and extracts full disassembly of the exact 871e6d8 ELF pair.
+The aligned loaded-segment scan finds the same eFuse-page word value
+inventory as bb5234e (bootloader 1, application 27); the read register
+table remains 22 words and the incidental value remains inside the
+Japanese font. The 7 bootloader and 10 application base loads plus
+3 explicit application register loads belong to the same read functions
+as the prior candidate. The full application eFuse startup function
+still returns ESP_OK, and the read-register utility still loads the
+addressed register. No new linked known writer function or direct
+program/write_key/set_timing ROM reference was observed. The SDK
+configuration hashes are unchanged. The reviewed scope is bounded:
+computed addresses, ROM internals and runtime behavior are not proved
+safe. The previous hardware checkpoint is not proof of this new binary.
+Repeat write and boot checkpoints with the new OUT directory. Stop at
+the first panic, unexpected movement, heat or power problem.
+
 ### Factory CSV spelling
 
 The partition CSV follows the owner's supplied ESP-IDF table, including
@@ -202,7 +225,7 @@ partition image SHA-256 remains
 48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b.
 The installer still preserves the physical partition table and assets.
 
-## Supervised installation (instructions for future approved candidate only)
+## Supervised installation (exact DMA-fix candidate only)
 
 The installer requires the exact source commit and all four image digests, explicit
 acknowledgement of download mode, same-device identity and compatible layout.

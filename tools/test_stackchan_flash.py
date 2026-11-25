@@ -21,7 +21,14 @@ class FlashTests(unittest.TestCase):
             "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
             "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
         )
-        self.assertEqual(APPROVED_BUILDS,frozenset())
+        fixed=(
+            "871e6d8851c6b7348bbf5a0d71a80affa10e1e32",
+            "2b96dbdd514a69af17c2d6425de8cc10939051e3a03462ae4a2c6ffc1249f512",
+            "504181669538c9de2b8a866fb62ff5e44ec8cb6c744dfd9127fedf5a9270e05b",
+            "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+            "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+        )
+        self.assertEqual(APPROVED_BUILDS,frozenset({fixed}))
         self.assertEqual(CHECKPOINT_BUILDS,frozenset({approved}))
         names=("TamaPoke.ino.bootloader.bin","TamaPoke.ino.bin",
                "TamaPoke.ino.partitions.bin","ota_data_initial.bin")
@@ -30,8 +37,9 @@ class FlashTests(unittest.TestCase):
                 dict(name=n,sha256=h) for n,h in zip(names,t[1:])])
         with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
             require_approved(as_plan(approved))
-        for i in range(len(approved)):
-            tampered=list(approved)
+        require_approved(as_plan(fixed))
+        for i in range(len(fixed)):
+            tampered=list(fixed)
             tampered[i]="0"*len(tampered[i])
             with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
                 require_approved(as_plan(tampered))
