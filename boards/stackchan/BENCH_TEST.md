@@ -44,11 +44,13 @@ Installer approval commit 111ee286ab7350821f7ce8062d673c243c1416d3.
   maximum loop gap 601026 us, 1632 gaps >=100 ms; game 29, dim 30.
   Active max render 133853 us includes flush (max 32127 us).
   No off-screen windows. Report is review-required solely for duration;
-  60-minute continuous telemetry and visual acceptance remain outstanding.
+  60-minute continuous telemetry is explicitly waived by the owner (not PASS);
+  visual acceptance remains outstanding.
   Do not infer a specific cause for the maximum loop gap from aggregates.
 - NOT RUN or not yet reported: detailed gameplay, all UI screens, audio,
   RTC retention, SD sprite reads, RGB visual behavior, persistence, motion preview ON,
-  60-minute stability and final post-game eFuse comparison.
+  final post-game eFuse comparison. The owner explicitly waived the 60-minute
+  stability requirement for this Alpha; long-duration stability remains unverified.
   Physical motors remain disabled.
 
 Preserve this exact installed firmware while testing. A fresh CI artifact is
@@ -63,8 +65,9 @@ not automatically approved.
 3. Explicitly test BODY RGB ON/OFF. Motion preview is optional until the
    pet is awake and calibrated; BODY MOTION PREVIEW ON/OFF and BODY CHECK
    must keep hardware=disabled. Do not enable motor power or a servo probe.
-4. Record a continuous 60-minute PERF ON session, then PERF OFF; analyze the
-   captured log using stackchan_perf_report.py. Record active/idle workload.
+4. SKIPPED BY OWNER: continuous 60-minute PERF ON session. Retain the
+   preliminary 368640 ms report; do not lower the report threshold or label
+   it a full soak pass. Continue other acceptance checks.
 5. After testing, enter ROM download mode and capture a new independent
    eFuse snapshot; compare against the original installation before snapshot
    and pre-START after-boot snapshot. Do not overwrite existing checkpoints.
@@ -111,7 +114,7 @@ Do not include credentials, MAC or private flash images in public issues.
 | RGB | Explicit ON/OFF; pet transitions, sleep and low battery clear |
 | Motion | Preview only; no physical motion, calibration unchanged; BODY SERVO PROBE blocks if rail off and reports read-only feedback only if preconditions hold |
 | Persistence | Game state and language survive reboot; original calibration unchanged |
-| Stability | 60-minute normal play with PERF ON; capture paired PERF_TIME/PERF_MEM records, compare active vs idle FPS, min/largest heap, PSRAM and reset reason; PERF OFF afterwards |
+| Stability (waived by owner; not PASS) | 60-minute normal play with PERF ON; capture paired PERF_TIME/PERF_MEM records, compare active vs idle FPS, min/largest heap, PSRAM and reset reason; PERF OFF afterwards |
 | eFuse | Read-only before/after summaries unchanged, including after first boot |
 
 Stop on abnormal heat, unintended motion, power faults, resets or display corruption.
