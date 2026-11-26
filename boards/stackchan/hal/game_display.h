@@ -76,7 +76,7 @@ public:
       // Keep synchronous internal-RAM strip transfers; no DMA lifetime change.
       tpkdirty::pack(strip_,current,width,rows,span);
       M5.Display.pushImage((home?0:VIEW_X)+span.x,(home?HOME_Y:VIEW_Y)+y,span.w,rows,strip_);
-      if(shadow)std::memcpy(shadow,current,size_t(width)*rows*sizeof(uint16_t));
+      tpkdirty::commitPacked(shadow,strip_,width,rows,span);
       sent+=uint32_t(span.w)*rows;++count;
     }
     if(count){M5.Display.endWrite();M5.Display.setSwapBytes(previousSwap);}

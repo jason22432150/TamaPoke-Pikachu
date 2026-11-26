@@ -421,3 +421,10 @@ jitter compensation (no backlog after long stalls). `FPS?` adds `interval_us`
 and `precise`; `interval_ms` remains the rounded policy value. The nominal
 cap is reported for precise mode; achieved FPS still requires PERF telemetry.
 Idle, sleep, low battery, minigames and Waveshare retain legacy cadence.
+
+## B11c dirty-strip optimization (candidate)
+Equal edge groups are skipped in 64-pixel blocks before the existing tile
+walk. Dirty spans are identical to B10. Full-width packing uses one copy;
+shadow commits copy only transmitted pixels from the staging buffer. The
+unchanged fast path, full refresh fallback and synchronous LCD path remain.
+Actual performance benefit requires hardware measurement.

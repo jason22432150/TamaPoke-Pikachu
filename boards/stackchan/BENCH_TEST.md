@@ -308,6 +308,18 @@ and Waveshare paths retain millisecond policy. FPS? adds interval_us and
 precise=0/1, cap_milli reports selected nominal cap in precise mode. Unit tests
 cover jitter, long stalls, wrap and mode transitions. Actual FPS, touch and
 LCD behavior require new candidate review and hardware verification.
+B11b CI 45851088154: PASS.
+
+## B11c dirty-strip work reduction (candidate)
+Preserve exact B10 dirty span and synchronous strip transfer semantics.
+Compare equal 64-pixel edge groups before the original 16-pixel tile walk;
+keep whole-strip equality fast path. Pack full-width strips contiguously;
+update the shadow only for the transmitted span, from internal RAM staging.
+No new allocation or DMA, no changed rectangle count or geometry intended.
+Host regression compares against legacy spans across 11 widths and all 8
+strip heights, randomized sequences, forced full frames and buffer guards.
+Actual PSRAM/cache and flush savings are not measured yet; benchmark on K151
+with identical scene, FPS, dirty/full settings. Exact binary review required.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
