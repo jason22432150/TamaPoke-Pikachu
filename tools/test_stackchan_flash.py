@@ -28,7 +28,14 @@ class FlashTests(unittest.TestCase):
             "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
             "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
         )
-        self.assertEqual(APPROVED_BUILDS,frozenset({fixed}))
+        landscape=(
+            "01266e011f68e7e4c78c093efb0d4f882b70ee45",
+            "f544e71912a4ef440c8f428ac6fd1b5cc1cb1c5bd3b6a007cf267f0dea5fb648",
+            "379d3e349cb0d8cfc5cec0b9014d7ed387558530ade8e4a034a1f0d82d9c554a",
+            "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+            "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+        )
+        self.assertEqual(APPROVED_BUILDS,frozenset({fixed,landscape}))
         self.assertEqual(CHECKPOINT_BUILDS,frozenset({approved}))
         names=("TamaPoke.ino.bootloader.bin","TamaPoke.ino.bin",
                "TamaPoke.ino.partitions.bin","ota_data_initial.bin")
@@ -37,12 +44,15 @@ class FlashTests(unittest.TestCase):
                 dict(name=n,sha256=h) for n,h in zip(names,t[1:])])
         with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
             require_approved(as_plan(approved))
-        require_approved(as_plan(fixed))
-        for i in range(len(fixed)):
-            tampered=list(fixed)
-            tampered[i]="0"*len(tampered[i])
-            with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
-                require_approved(as_plan(tampered))
+        for candidate in (fixed,landscape):
+            require_approved(as_plan(candidate))
+            for i in range(len(candidate)):
+                tampered=list(candidate)
+                tampered[i]="0"*len(tampered[i])
+                with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+                    require_approved(as_plan(tampered))
+        with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+            require_approved(as_plan((landscape[0],fixed[1],*landscape[2:])))
     def test_unapproved_never_opens_serial(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);bins=root/"bins";bins.mkdir()

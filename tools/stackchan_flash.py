@@ -18,11 +18,20 @@ from stackchan_deploy_review import plan, readback, checkpoints
 # The bb5234e candidate is withdrawn after the owner's GDMA boot-loop.
 # Exact DMA-fix candidate reviewed from build run 45581224571 and ELF audit
 # 45584713403. Bounded static review and supervised ROM-only install;
-# corrected hardware startup remains untested.
+# DMA-fix startup was subsequently confirmed by the owner.
+# Landscape B6: exact archived build 45675596329, audit 45726785560.
+# Bounded static review of known MMIO and ROM references; hardware untested.
+# Retain the previously approved DMA-fix tuple for supervised recovery.
 APPROVED_BUILDS=frozenset({(
     "871e6d8851c6b7348bbf5a0d71a80affa10e1e32",
     "2b96dbdd514a69af17c2d6425de8cc10939051e3a03462ae4a2c6ffc1249f512",
     "504181669538c9de2b8a866fb62ff5e44ec8cb6c744dfd9127fedf5a9270e05b",
+    "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+    "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+),(
+    "01266e011f68e7e4c78c093efb0d4f882b70ee45",
+    "f544e71912a4ef440c8f428ac6fd1b5cc1cb1c5bd3b6a007cf267f0dea5fb648",
+    "379d3e349cb0d8cfc5cec0b9014d7ed387558530ade8e4a034a1f0d82d9c554a",
     "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
     "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
 )})

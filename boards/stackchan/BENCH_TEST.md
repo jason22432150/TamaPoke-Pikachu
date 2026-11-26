@@ -81,9 +81,23 @@ unverified; the currently installed candidate is unchanged. Start StackChan-spec
 preserving pet scene, shared touch/render geometry, followed by settings,
 gallery and minigames. Keep Waveshare circular UI, existing game saves,
 factory Assets and partition table, eFuse policy, physical motor/OTA restrictions.
-B1 is transitional: ordinary hatched home with top/bottom controls, isotropic
-central sampling and extended edge scenery. Complex screens keep the previous
-geometry until later phases. No firmware reapproval is part of this change.
+B1-B6 CI passed. B6 exact candidate 01266e011f68e7e4c78c093efb0d4f882b70ee45,
+build 45675596329, paired artifact 15051602699 (NOT-FOR-FLASH metadata retained).
+Audit 45726785560, artifact 15074463917: 11 fixed hashes verified; seven boot
+and ten app known MMIO load sites, 10/34 extracted symbol ranges. Review
+of known direct base references found chip/version/encryption/calibration
+reads; rtc_init stores target RTC/system/SPI registers or RAM, and calls
+the RTC calibration helpers. Named read helpers read registers and fill RAM.
+No known linked writer symbol or direct/literal ROM writer reference was
+reported. SDK config hashes match previously reviewed settings. This is
+bounded evidence, not proof of all computed/indirect paths or reserved bits.
+Exact tuple is added to the installer gate for supervised ROM-only installation.
+Do not install a new build from the audit or approval commit. Old approved
+DMA-fix tuple remains available for supervised recovery. Hardware acceptance
+of B6 remains NOT RUN; original owner waiver of 60-minute soak stands.
+After installation compare named eFuse fields before, after write, and after
+first boot; validate all landscape screens and LCD FULL/DIRTY counters.
+No motor, partition or NVS schema changes are authorized.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
