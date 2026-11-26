@@ -382,3 +382,18 @@ labeled NOT-FOR-FLASH. The build re-converts the selected SDK bootloader ELF
 and records SDK/ELF/BIN hashes; this does not attest the actual bootloader
 configuration. The installer has an empty audited-build allowlist and rejects
 all installs before connecting to hardware. No override is supported.
+
+## B8 local interaction (experimental, new candidate must be audited)
+
+StackChan-only bounded LF/CRLF line parser (256 bytes, 128 bytes/loop,
+one command per loop). No waiting for newline; reject overlong/control-byte
+lines until LF. Existing explicit binary PUT handler remains blocking; no
+change to its handshake or write gates. SERIAL? reports parser counters.
+SI12T head touch uses internal I2C 0x68, upstream StackChan 28b9f0c setup,
+50ms polling and two-sample debounce; disable after three read errors. HEAD?,
+HEAD ON/OFF. One caress per contact on awake pet home, wake-only while dim/off;
+no action in modal pages; swipe counts diagnostic only. RGB remains opt-in:
+BODY RGB ON/AUTO/OFF, BODY RGB?, BODY RGB TEST (red/green/blue, 3 seconds,
+then automatic pet colors). RGB test stops on sleep, off or unsafe battery.
+No new physical motor output, eFuse, or NVS schema changes. Hardware behavior
+and I2C timing are not yet validated. STATS mon agrees with HEALTH on K151.

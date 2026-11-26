@@ -11,8 +11,10 @@ struct PetState {
   int batteryPercent;
   uint8_t lowestStat;
 };
+inline bool ledAllowed(const PetState& p){return !p.screenOff&&!p.sleeping&&p.batteryPercent>10&&p.batteryPercent<=100;}
+inline Color testColor(uint32_t elapsed){return elapsed<1000?Color{24,0,0}:elapsed<2000?Color{0,24,0}:Color{0,0,24};}
 inline Color colorFor(const PetState& p) {
-  if(p.screenOff || p.sleeping || p.batteryPercent<0 || p.batteryPercent<=10)
+  if(!ledAllowed(p))
     return {0,0,0};
   if(p.ceremony) return {12,0,24};
   if(p.evolving) return {28,24,0};

@@ -14,6 +14,9 @@ class StackChanBody {
   bool rgbEnabled_=false;
   tpkbody::Color last_{0,0,0};
   uint32_t lastUpdate_=0;
+  bool rgbTest_=false;
+  uint32_t rgbTestStart_=0;
+  tpkbody::PetState rgbState_{true,true,false,false,false,false,false,-1,0};
   tpkbody::MotionPolicy motion_;
   tpkbody::ServoDiagnostic servoDiagnostic_;
   bool calibrationValid_=false;
@@ -82,17 +85,34 @@ public:
   }
   void disableRgb() {
     if(rgbEnabled_) show({0,0,0});
-    rgbEnabled_=false;
+    rgbEnabled_=false;rgbTest_=false;
   }
   void update(const tpkbody::PetState& state,uint32_t now) {
+    rgbState_=state;
     if(!rgbEnabled_) return;
     auto next=tpkbody::colorFor(state);
+    if(rgbTest_){
+      if(!tpkbody::ledAllowed(state)||now-rgbTestStart_>=3000)rgbTest_=false;
+      else next=tpkbody::testColor(now-rgbTestStart_);
+    }
     if(next==last_) return;
     // Switch off immediately; limit nonzero color changes to 5 Hz.
     if(next!=tpkbody::Color{0,0,0} && now-lastUpdate_<200) return;
     show(next);lastUpdate_=now;
   }
   bool command(const String& line) {
+    if(line=="BODY RGB?"){
+      Serial.printf("RGB enabled=%d test=%d r=%u g=%u b=%u (requested, not optical feedback)\n",
+        rgbEnabled_,rgbTest_,unsigned(last_.r),unsigned(last_.g),unsigned(last_.b));
+      Serial.println("DONE");return true;
+    }
+    if(line=="BODY RGB TEST"){
+      if(!tpkbody::ledAllowed(rgbState_)||!enableRgb()){
+        Serial.println("ERR RGB test unavailable (awake, screen on, battery >10 required)");return true;
+      }
+      rgbTestStart_=millis();rgbTest_=true;Serial.println("DONE RGB test red/green/blue, 3s then auto");return true;
+    }
+    if(line=="BODY RGB AUTO"){rgbTest_=false;Serial.println(enableRgb()?"DONE RGB auto":"ERR RGB expander unavailable");return true;}
     if(line=="BODY RGB ON") {
       Serial.println(enableRgb()?"DONE RGB request enabled":"ERR RGB expander unavailable");
       return true;

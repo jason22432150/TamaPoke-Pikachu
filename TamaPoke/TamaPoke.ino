@@ -26,6 +26,8 @@
 #include "game_sidebar.h"
 #include "game_perf.h"
 #include "nvs_guard.h"
+#include "serial_line_policy.h"
+#include "head_touch.h"
 #else
 #include "TouchDrvCSTXXX.hpp"
 #endif
@@ -58,6 +60,18 @@
 #define FW_VERSION "1.19-pika-k151-dev"
 static StackChanHAL stackBoard;
 static StackChanBody stackBody;
+static StackChanHeadTouch stackHead;
+static tpkserial::Line stackSerialLine;
+// Stop at one delimiter: never consume bytes belonging to the existing PUT payload.
+static bool stackReadLine(String& line){
+  for(unsigned n=0;n<128 && Serial.available();++n){
+    int c=Serial.read();if(c<0)break;
+    auto r=stackSerialLine.feed(uint8_t(c));
+    if(r==tpkserial::Result::Rejected){Serial.println("ERR SERIAL invalid or too long");return false;}
+    if(r==tpkserial::Result::Ready){line=stackSerialLine.text();line.trim();return line.length()!=0;}
+  }
+  return false;
+}
 static tpkside::Sidebar stackSidebar;
 static tpkside::TouchRouter stackTouchRouter;
 static StackChanCanvas stackCanvas;
@@ -399,10 +413,10 @@ void setup() {
   M5.Display.println("Serial START to initialize");
   for(;;) {
     stackBoard.update();
-    if(Serial.available()) {
-      String s=Serial.readStringUntil('\n'); s.trim();
-      if(s=="START") break;
-      if(s=="BODY CALIBRATION") stackBody.reportCalibration();
+    String s;
+    if(stackReadLine(s)){
+      if(s=="START")break;
+      if(s=="BODY CALIBRATION")stackBody.reportCalibration();
     }
     delay(20);
   }
@@ -497,6 +511,8 @@ void setup() {
   lastInteract = millis();
 #if BOARD_STACKCHAN
   stackCanvas.attachPerf(stackPerf.monitor());
+  Serial.println(stackHead.begin()?"HEAD ready":"HEAD unavailable (game continues)");
+  // Opt-in RGB remains unchanged; user can explicitly enable AUTO or TEST.
   stackGameReady=true;
 #endif
 }
@@ -581,6 +597,20 @@ void loop() {
   pollPwrButton();  // lock input before handling touch/BOOT in this pass
 #endif
   handleTouch();
+#if BOARD_STACKCHAN
+  const auto headEvent=stackHead.poll(millis());
+  if(headEvent==tpkhead::Event::Press){
+    // One action per debounced contact, wake-only while dim/off; no modal,
+    // egg, sleeping-pet or physical motor actions.
+    if(screenOff||dimStage){screenOff=false;wakeUI();}
+    else if(!pet.sleeping&&stackHomePage()==tpkhome::Page::Pet&&stackPresentedPage==tpkhome::Page::Pet){
+      static uint32_t lastHeadPet=0;
+      if(!lastHeadPet||millis()-lastHeadPet>=600){
+        lastHeadPet=millis();wakeUI();pet.caress();sfxPlay(SFX_HEART);
+      }
+    }
+  }
+#endif
   handleSerial();
 
 #if BOARD_AMOLED_175C
@@ -822,10 +852,15 @@ void idleWait(PowerCtx c) {
 // ---------- consola serie (provision de SD + depuracion) ----------
 
 void handleSerial() {
+#if BOARD_STACKCHAN
+  String line;
+  if(!stackReadLine(line))return;
+#else
   if (!Serial.available()) return;
   String line = Serial.readStringUntil('\n');
   line.trim();
   if (line.length() == 0) return;
+#endif
 #if BOARD_AMOLED_175C
   if (line == "LOCK?") {
     Serial.printf("LOCK locked=%d panel_sleep=%d pwr=%d\n", screenLock.locked() ? 1 : 0,
@@ -846,6 +881,13 @@ void handleSerial() {
       (unsigned long long)c.rects,(unsigned long long)c.pixels,(unsigned long long)c.fullPixels);
     Serial.println("DONE");return;
   }
+  if(line=="SERIAL?"){
+    Serial.printf("SERIAL accepted=%lu rejected=%lu pending=%u discarding=%d budget=128 max=256\n",
+      (unsigned long)stackSerialLine.accepted(),(unsigned long)stackSerialLine.rejected(),
+      unsigned(stackSerialLine.pending()),stackSerialLine.discarding());
+    Serial.println("DONE");return;
+  }
+  if(stackHead.command(line))return;
   if(stackPerf.command(line,screenOff,dimStage>0,gameOpen||sackOpen)) return;
   if(stackBody.command(line)) return;
 #endif
@@ -942,7 +984,12 @@ void handleSerial() {
   } else if (line == "STATS") {
     Serial.printf("spec=%d nv=%u com=%u fel=%u ene=%u lim=%u desc=%u sd=%d mon=%d bat=%d usb=%d rtc=%u\n",
                   pet.speciesId, pet.level(), pet.fullness, pet.joy, pet.energy,
-                  pet.hygiene, pet.careMistakes, sdReady, mon.loaded,
+                  pet.hygiene, pet.careMistakes, sdReady,
+#if BOARD_STACKCHAN
+                  pmd.loaded || mon.loaded,
+#else
+                  mon.loaded,
+#endif
                   batPercent(), usbPresent(), rtcEpoch());
     Serial.printf("peso=%u fue=%u def=%u vel=%u genes=%u/%u/%u tr=%u/%u/%u baya=%d\n",
                   pet.weight, pet.atkStat(), pet.defStat(), pet.speStat(),
