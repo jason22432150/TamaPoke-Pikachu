@@ -320,6 +320,19 @@ Host regression compares against legacy spans across 11 widths and all 8
 strip heights, randomized sequences, forced full frames and buffer guards.
 Actual PSRAM/cache and flush savings are not measured yet; benchmark on K151
 with identical scene, FPS, dirty/full settings. Exact binary review required.
+B11c CI 45853402747: PASS.
+
+## B11d opt-in LCD phase timing (candidate)
+PERF DETAIL ON/OFF/? enables phase instrumentation separately from PERF ON.
+Changing detail mode resets the active sampling window. PERF_LCD reports
+per-central-flush average/max compare, pack, transfer (including transaction
+open/close), shadow, residual average, pixels, rectangles, shadow bytes and
+unchanged/full counts. Zero-work stages are included in averages; no extra
+per-strip timer reads when detail is off. Transfer is time inside driver
+calls, not a measurement of wire activity; instrumentation adds overhead.
+Sidebar transfers are outside these counts. Compare ordinary PERF and detail
+runs on identical scenes. Host tests cover reset, disabled mode, empty/full
+flushes, phase accounting and residual saturation. Exact audit pending.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.

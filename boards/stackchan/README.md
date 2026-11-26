@@ -428,3 +428,12 @@ walk. Dirty spans are identical to B10. Full-width packing uses one copy;
 shadow commits copy only transmitted pixels from the staging buffer. The
 unchanged fast path, full refresh fallback and synchronous LCD path remain.
 Actual performance benefit requires hardware measurement.
+
+## B11d opt-in LCD phase telemetry (candidate)
+`PERF DETAIL ON` selects detailed profiling; `PERF ON` starts measurement.
+`PERF DETAIL?` reports selected/active. Each 5s window adds `PERF_LCD` with
+compare, pack, transfer, shadow and other timing, pixels, rects, shadow_bytes,
+unchanged and full flush counts. Averages include zero-work flushes. Detail
+mode changes reset the current window. `PERF DETAIL OFF` restores ordinary
+telemetry with no per-strip timer reads. Transfer measures driver-call time,
+not SPI wire activity; sidebar excluded, instrumentation adds overhead.

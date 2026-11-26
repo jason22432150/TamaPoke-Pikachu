@@ -25,6 +25,17 @@ class GamePerf {
       (unsigned long)w.flush.mean(),(unsigned long)w.flush.maximum,
       (unsigned long)w.loop.mean(),(unsigned long)w.loop.maximum,
       (unsigned long)w.slowLoops,off,dim,game);
+    if(monitor_.detailSelected()){
+      const auto& d=w.detail;
+      Serial.printf("PERF_LCD seq=%lu samples=%lu compare_avg_us=%lu compare_max_us=%lu pack_avg_us=%lu pack_max_us=%lu transfer_avg_us=%lu transfer_max_us=%lu shadow_avg_us=%lu shadow_max_us=%lu other_avg_us=%lu pixels=%llu rects=%llu shadow_bytes=%llu unchanged=%lu full=%lu\n",
+        (unsigned long)sequence_,(unsigned long)d.compare.count,
+        (unsigned long)d.compare.mean(),(unsigned long)d.compare.maximum,
+        (unsigned long)d.pack.mean(),(unsigned long)d.pack.maximum,
+        (unsigned long)d.transfer.mean(),(unsigned long)d.transfer.maximum,
+        (unsigned long)d.shadow.mean(),(unsigned long)d.shadow.maximum,
+        (unsigned long)d.other.mean(),(unsigned long long)d.pixels,(unsigned long long)d.rects,
+        (unsigned long long)d.shadowBytes,(unsigned long)d.unchanged,(unsigned long)d.full);
+    }
     memory();
   }
 public:
@@ -33,6 +44,11 @@ public:
     if(monitor_.due(millis()))report(off,dim,game);
   }
   bool command(const String& line,bool off,bool dim,bool game){
+    if(line=="PERF DETAIL ON"||line=="PERF DETAIL OFF"){
+      monitor_.setDetail(line=="PERF DETAIL ON",millis());
+      Serial.println(monitor_.detailSelected()?"DONE PERF DETAIL ON":"DONE PERF DETAIL OFF");return true;
+    }
+    if(line=="PERF DETAIL?"){Serial.printf("PERF_DETAIL selected=%d active=%d\n",monitor_.detailSelected(),monitor_.detailEnabled());Serial.println("DONE");return true;}
     if(line=="PERF ON"){monitor_.start(millis());Serial.println("DONE PERF ON");return true;}
     if(line=="PERF OFF"){monitor_.stop();Serial.println("DONE PERF OFF");return true;}
     if(line=="PERF?"){

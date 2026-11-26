@@ -60,6 +60,9 @@ public:
     if(!pixels_)return;
     const bool measure=perf_&&perf_->enabled();
     const uint32_t started=measure?micros():0;
+    const bool detail=measure&&perf_->detailEnabled();
+    tpkperf::FlushSample sample;
+    uint32_t phase=0;
     const bool home=requestedHome_;
     const int width=raster_.width(),height=raster_.height();
     const bool cached=dirtyActive();
@@ -70,19 +73,34 @@ public:
       const int rows=(height-y<STRIP_ROWS)?height-y:STRIP_ROWS;
       const uint16_t* current=raster_.row(y);
       uint16_t* shadow=cached?previous_+size_t(y)*width:nullptr;
+      if(detail)phase=micros();
       auto span=tpkdirty::changed(current,shadow,width,rows,full);
+      if(detail)sample.compare+=micros()-phase;
       if(!span.w)continue;
-      if(!count){M5.Display.setSwapBytes(true);M5.Display.startWrite();}
+      if(!count){
+        if(detail)phase=micros();
+        M5.Display.setSwapBytes(true);M5.Display.startWrite();
+        if(detail)sample.transfer+=micros()-phase;
+      }
       // Keep synchronous internal-RAM strip transfers; no DMA lifetime change.
+      if(detail)phase=micros();
       tpkdirty::pack(strip_,current,width,rows,span);
+      if(detail){const uint32_t now=micros();sample.pack+=now-phase;phase=now;}
       M5.Display.pushImage((home?0:VIEW_X)+span.x,(home?HOME_Y:VIEW_Y)+y,span.w,rows,strip_);
+      if(detail){const uint32_t now=micros();sample.transfer+=now-phase;phase=now;}
       tpkdirty::commitPacked(shadow,strip_,width,rows,span);
+      if(detail)sample.shadow+=micros()-phase;
       sent+=uint32_t(span.w)*rows;++count;
     }
-    if(count){M5.Display.endWrite();M5.Display.setSwapBytes(previousSwap);}
+    if(count){
+      if(detail)phase=micros();
+      M5.Display.endWrite();M5.Display.setSwapBytes(previousSwap);
+      if(detail)sample.transfer+=micros()-phase;
+    }
     presentedHome_=home;previousValid_=cached;
     lcd_.frame(width,height,sent,count);
-    if(measure)perf_->flushed(micros()-started);
+    if(detail)perf_->flushedDetailed(micros()-started,sample,sent,count,cached,full);
+    else if(measure)perf_->flushed(micros()-started);
   }
 };
 struct StackChanPanel { void setBrightness(uint8_t value){M5.Display.setBrightness(value);} };
