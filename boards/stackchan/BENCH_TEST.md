@@ -100,9 +100,34 @@ before and after write. Owner subsequently supplied the after-boot report
 (status observable-summary-unchanged, after_write and after_boot both
 changed_fields=[], unreadable_before=0, unreadable_after=0). Named eFuse
 checkpoint comparison PASS (owner report, 2026-11-26); the tool cannot establish
-boot ordering independently. Physical display, touch, actual game startup,
-persistence and post-game eFuse comparison remain unverified. Original
-owner waiver of 60-minute soak stands.
+boot ordering independently.
+Owner serial evidence after START (2026-11-26, candidate 01266e0):
+- Game startup PASS; saved species 4, level 15, bond 51, medals 0x8;
+  406 minutes of offline progression reported. Save retention across a new
+  controlled reboot and RTC correctness still need independent verification.
+- SD mounted, total 15921446912 bytes, used 43073536 bytes; 151 thumbnails
+  loaded (165 KB), PMD /mons/p004.bin loaded (110 KB). SD asset read PASS.
+  HEALTH mon=1 while STATS mon=0 is consistent with the former reporting
+  pmd.loaded || mon.loaded and the latter legacy fallback mon.loaded only.
+- LCD cache=1 dirty=1 frames=175 unchanged=0 rects=1564 pixels=703360
+  full_pixels=8960000: 92.15% fewer viewport pixels versus full refresh,
+  not an elapsed-time or FPS measurement; visual fidelity and matched
+  FULL/DIRTY workload remain unverified.
+- PERF_MEM at 48927 ms: heap 295316, minimum 290784, largest 249844;
+  PSRAM 7862504/8388608 free, largest 7733236; reset 11, CPU 240 MHz.
+  Single sample, not leak or stability evidence.
+- TIME rtc=1795597402. Existing game clock uses local wall time encoded
+  as an epoch; this decodes to 2026-11-25 09:03:22 on that convention,
+  apparently one day behind the owner's 2026-11-26 morning session.
+  Confirm actual host/RTC wall time before changing clock; no correction
+  performed or inferred from offline progression alone.
+- BODY CALIBRATION yaw=460 pitch=620 valid=1 envelope=1; BODY CHECK
+  rgb=0 calibration=present-unverified motor=disabled, preview=0 active=0
+  hardware=disabled. Matches previous reported values; independent factory
+  calibration comparison still outstanding.
+Physical display, touch, detailed gameplay, persistence after reboot and
+post-game eFuse comparison remain unverified. Original owner waiver of
+60-minute soak stands.
 After installation compare named eFuse fields before, after write, and after
 first boot; validate all landscape screens and LCD FULL/DIRTY counters.
 No motor, partition or NVS schema changes are authorized.
