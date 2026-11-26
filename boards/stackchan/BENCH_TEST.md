@@ -256,6 +256,14 @@ installation; no rebuild authorized. B8 retained for recovery. Require all
 three eFuse checkpoints and verify FPS, wake, gameplay, LCD visual behavior
 and invalid-command handling on hardware. Do not enable motor or OTA.
 
+Owner-reported B10 installation checkpoints (2026-11-26): write-verified.json
+and after-boot overall status observable-summary-unchanged; both comparisons
+changed_fields=[], unreadable_before=0, unreadable_after=0. Named observable
+checkpoint comparison PASS (owner report). One malformed duplicate command
+was rejected by argparse; subsequent after-boot succeeded. Boot ordering and
+protected/reserved bits are not independently proven. FPS behavior, dim/wake,
+minigames, reboot default and post-game checkpoint remain pending.
+
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
 - Optional: capture and verify two full factory reads using stackchan_backup.py. Store privately. Factory restoration is outside project scope.
