@@ -238,7 +238,23 @@ K151-only FPS? and FPS 5/10/15/20/30 commands, RAM-only default 10.
 Power-saving limits and 85 ms mini-game cadence retained. Verify active
 PERF windows, wake and dim behavior, gameplay and invalid command handling.
 Actual FPS depends on rendering cost; 30 is a requested cap, not a guarantee.
-Exact built binary must be audited separately before installation.
+Exact candidate 54d9a27d2e735ba8b051aaa44aed9de79096a97b, build run
+45838322365 (six jobs passed), paired artifact 15127363086. Fixed ELF audit
+45839829181, artifact 15128210548, passed all 11 pinned file hashes and
+located all 7 boot / 10 app known reference sites in 10 / 34 extracted
+ranges. No known linked eFuse writer or explicit ROM writer reference.
+Compared full emitted reference ranges against B8 audit 45826383469:
+boot listings identical after address normalization; app range names match.
+Apart from the pre-function data/literal region disassembled as instructions,
+changed executable listings retain instruction count and differ only in l32r
+literal-pool relocation or resolved log/assert string addresses. Named
+read helpers, callback targets, eFuse register targets and init paths retained.
+SDK configs, partition and OTA-data hashes unchanged. This is bounded static
+evidence, not a proof of all indirect/computed paths, ROM behavior or protected
+bits. Exact tuple only added to installer allowlist for supervised ROM-only
+installation; no rebuild authorized. B8 retained for recovery. Require all
+three eFuse checkpoints and verify FPS, wake, gameplay, LCD visual behavior
+and invalid-command handling on hardware. Do not enable motor or OTA.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.

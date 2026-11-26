@@ -77,7 +77,14 @@ class FlashTests(unittest.TestCase):
             "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
             "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
         )
-        self.assertEqual(APPROVED_BUILDS,frozenset({fixed,landscape,interaction}))
+        fps=(
+            "54d9a27d2e735ba8b051aaa44aed9de79096a97b",
+            "0a33b61168e1e18b4bd846aa833a85326a321e67ec6dc0a92342d3ec8b61976f",
+            "273f5a4bc7098b2c11b231f31c54a717cd68d1f8d866ea3c62ae0eae220ba707",
+            "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+            "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+        )
+        self.assertEqual(APPROVED_BUILDS,frozenset({fixed,landscape,interaction,fps}))
         self.assertEqual(CHECKPOINT_BUILDS,frozenset({approved}))
         names=("TamaPoke.ino.bootloader.bin","TamaPoke.ino.bin",
                "TamaPoke.ino.partitions.bin","ota_data_initial.bin")
@@ -86,7 +93,7 @@ class FlashTests(unittest.TestCase):
                 dict(name=n,sha256=h) for n,h in zip(names,t[1:])])
         with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
             require_approved(as_plan(approved))
-        for candidate in (fixed,landscape,interaction):
+        for candidate in (fixed,landscape,interaction,fps):
             require_approved(as_plan(candidate))
             for i in range(len(candidate)):
                 tampered=list(candidate)
@@ -97,6 +104,10 @@ class FlashTests(unittest.TestCase):
             require_approved(as_plan((landscape[0],fixed[1],*landscape[2:])))
         with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
             require_approved(as_plan((interaction[0],landscape[1],*interaction[2:])))
+        with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+            require_approved(as_plan((fps[0],interaction[1],*fps[2:])))
+        with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+            require_approved(as_plan((fps[0],fps[1],interaction[2],*fps[3:])))
     def test_unapproved_never_opens_serial(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);bins=root/"bins";bins.mkdir()

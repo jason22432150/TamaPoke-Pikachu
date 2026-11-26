@@ -24,6 +24,8 @@ from stackchan_deploy_review import plan, readback, checkpoints
 # Bounded static review of known MMIO and ROM references; hardware untested.
 # B8: archived build 45824080265 and exact ELF audit 45826383469.
 # Bounded comparison of known eFuse read paths against B6; hardware untested.
+# B10: archived build 45838322365 and exact ELF audit 45839829181.
+# Bounded comparison against B8, supervised ROM-only install; hardware pending.
 # Retain the previously approved tuples for supervised recovery.
 APPROVED_BUILDS=frozenset({(
     "871e6d8851c6b7348bbf5a0d71a80affa10e1e32",
@@ -41,6 +43,12 @@ APPROVED_BUILDS=frozenset({(
     "a3e4428e7f82ed450450a45c8550dc701de4e48b",
     "35c75da84b1221eaa0e345b0229ff2f4bbcc11e31d17150747f13c223c47e9cb",
     "ae2c6b9bfd38a5ef2c74b5ca62fefd94876297e2d9e4080c3ae4e26eed7d9312",
+    "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+    "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+),(
+    "54d9a27d2e735ba8b051aaa44aed9de79096a97b",
+    "0a33b61168e1e18b4bd846aa833a85326a321e67ec6dc0a92342d3ec8b61976f",
+    "273f5a4bc7098b2c11b231f31c54a717cd68d1f8d866ea3c62ae0eae220ba707",
     "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
     "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
 )})
