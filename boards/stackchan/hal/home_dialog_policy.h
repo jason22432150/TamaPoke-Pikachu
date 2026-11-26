@@ -25,10 +25,12 @@ constexpr Rect NAV_PREV={14,265,105,43}, NAV_NEXT={347,265,105,43},
 constexpr Rect CARD_RENAME={16,211,202,43}, CARD_TRAIN={100,211,266,43};
 constexpr Rect KEY_CANCEL={338,8,114,40};
 constexpr Rect keyboard(int i){return {12+(i%6)*74,70+(i/6)*47,70,43};}
+constexpr int CLOCK_CONTROL_COUNT=10, CLOCK_FPS=9;
 constexpr Rect clockControl(int i){
   return i<4?Rect{22+i*108,92,100,55}:
-    i<7?Rect{16+(i-4)*146,165,140,49}:
-    i==7?Rect{16,238,211,56}:Rect{239,238,211,56};
+    i<7?Rect{16+(i-4)*110,165,104,49}:
+    i==7?Rect{16,238,211,56}:i==8?Rect{239,238,211,56}:
+    i==CLOCK_FPS?Rect{346,165,104,49}:Rect{0,0,0,0};
 }
 inline int galleryHit(int x,int y){
   for(int i=0;i<16;i++)if(galleryCell(i).contains(x,y))return i;
@@ -39,7 +41,7 @@ inline int keyboardHit(int x,int y){
   return -1;
 }
 inline int clockHit(int x,int y){
-  for(int i=0;i<9;i++)if(clockControl(i).contains(x,y))return i;
+  for(int i=0;i<CLOCK_CONTROL_COUNT;i++)if(clockControl(i).contains(x,y))return i;
   return -1;
 }
 constexpr Rect FEED_PANEL={38,207,390,97};
@@ -62,7 +64,7 @@ constexpr bool visible(Rect r){
 static_assert(visible(galleryCell(0))&&visible(galleryCell(15))&&
   visible(NAV_PREV)&&visible(NAV_NEXT)&&visible(NAV_BACK)&&visible(CARD_RENAME)&&
   visible(CARD_TRAIN)&&visible(KEY_CANCEL)&&visible(keyboard(0))&&visible(keyboard(29))&&
-  visible(clockControl(0))&&visible(clockControl(8)),"B4 controls fit");
+  visible(clockControl(0))&&visible(clockControl(8))&&visible(clockControl(CLOCK_FPS)),"settings controls fit");
 static_assert(visible(starter(0))&&visible(starter(2))&&visible(feed(0))&&visible(feed(3))&&
   visible(choice(0))&&visible(choice(1))&&visible(release(0))&&visible(release(1))&&
   visible(FEED_PANEL)&&visible(CHOICE_PANEL)&&visible(RELEASE_PANEL),"dialog fits landscape viewport");

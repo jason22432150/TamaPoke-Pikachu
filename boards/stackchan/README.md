@@ -407,3 +407,10 @@ with PERF ON, not guaranteed by the target. Sleep, inactivity, dim/off and
 low battery retain the existing power-saving policy or a slower selected cap.
 Minigames retain the original 85 ms cadence. No NVS, SPI, motor or eFuse
 changes. Waveshare uses its original frame policy. Hardware acceptance pending.
+
+## B11a FPS settings pill (K151 candidate)
+Open settings with the sidebar gear or downward swipe; tap `FPS 10` to cycle
+10/15/20/30/5/10. Changes are immediate and RAM-only, shared with Serial FPS
+commands. Closing with X does not undo the live FPS selection; no clock
+write is required. Reboot restores 10. Other settings retain their actions.
+Hardware acceptance and exact candidate audit pending.

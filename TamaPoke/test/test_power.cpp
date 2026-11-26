@@ -232,3 +232,11 @@ TEST(power, stackchan_fps_preserves_saving_and_minigames) {
   CHECK_EQ((int)stackFrameIntervalMs(c,5),400);
   c.usb=true; CHECK_EQ((int)stackFrameIntervalMs(c,30),34);
 }
+
+TEST(power, stackchan_fps_touch_cycle) {
+  uint8_t fps=10;
+  const uint8_t expected[]={15,20,30,5,10};
+  for(uint8_t next:expected){fps=stackNextFps(fps);CHECK_EQ((int)fps,(int)next);CHECK(stackFpsAllowed(fps));}
+  CHECK_EQ((int)stackNextFps(0),10);
+  CHECK_EQ((int)stackNextFps(255),10);
+}

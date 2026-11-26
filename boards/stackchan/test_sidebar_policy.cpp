@@ -91,11 +91,11 @@ int main(){
   assert(game.update({160,110,true},a,10,true,uint8_t(Page::BallGame)).forward);
   assert(game.update({160,110,true},a,20,true,uint8_t(Page::BallResult)).cancel);
   assert(!game.update({160,110,false},a,30,true,uint8_t(Page::BallResult)).forward);
-  bool gallerySeen[16]={},keyboardSeen[30]={},clockSeen[9]={};
+  bool gallerySeen[16]={},keyboardSeen[30]={},clockSeen[tpkhome::CLOCK_CONTROL_COUNT]={};
   for(int y=HOME_Y;y<HOME_BOTTOM;y++)for(int x=0;x<HOME_W;x++){
     const auto p=homeToLogical({int16_t(x),int16_t(y),true});
     int g=tpkhome::galleryHit(p.x,p.y),k=tpkhome::keyboardHit(p.x,p.y),c=tpkhome::clockHit(p.x,p.y);
-    assert(g>=-1&&g<16&&k>=-1&&k<30&&c>=-1&&c<9);
+    assert(g>=-1&&g<16&&k>=-1&&k<30&&c>=-1&&c<tpkhome::CLOCK_CONTROL_COUNT);
     if(g>=0)gallerySeen[g]=true;
     if(k>=0)keyboardSeen[k]=true;
     if(c>=0)clockSeen[c]=true;
@@ -104,6 +104,19 @@ int main(){
   for(bool seen:gallerySeen)assert(seen);
   for(bool seen:keyboardSeen)assert(seen);
   for(bool seen:clockSeen)assert(seen);
+  for(int i=0;i<tpkhome::CLOCK_CONTROL_COUNT;i++){
+    auto b=tpkhome::clockControl(i);assert(tpkhome::visible(b));
+    assert(tpkhome::clockHit(b.x,b.y)==i);
+    assert(tpkhome::clockHit(b.x+b.w-1,b.y+b.h-1)==i);
+    for(int j=i+1;j<tpkhome::CLOCK_CONTROL_COUNT;j++){
+      auto other=tpkhome::clockControl(j);
+      assert(b.x+b.w<=other.x||other.x+other.w<=b.x||b.y+b.h<=other.y||other.y+other.h<=b.y);
+    }
+  }
+  assert(tpkhome::clockHit(345,165)==-1);
+  assert(tpkhome::clockHit(346,165)==tpkhome::CLOCK_FPS);
+  assert(tpkhome::clockHit(450,165)==-1);
+  assert(tpkhome::clockHit(233,260)==-1);
   assert(tpkhome::keyboardHit(82,70)==-1);
   assert(tpkhome::galleryHit(119,43)==-1);
   TouchRouter paging;

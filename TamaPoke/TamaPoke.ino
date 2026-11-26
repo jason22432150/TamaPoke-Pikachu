@@ -1791,6 +1791,9 @@ static uint32_t screenKey() {
     h = mixKey(h, audioEnabled());
     h = mixKey(h, audioVolume());
     h = mixKey(h, userDim);
+#if BOARD_STACKCHAN
+    h = mixKey(h, stackTargetFps);
+#endif
     h = mixKey(h, gLang);
   } else if (cardOpen) {
     for (uint32_t v : { (uint32_t)pet.speciesId, (uint32_t)pet.shiny, (uint32_t)pet.ageMinutes, (uint32_t)pet.streak,
@@ -2507,13 +2510,14 @@ void renderClock() {
   stackDialogText(T(S_SET_TIME),12,8,442,3,UI_INK);
   char timebuf[8];snprintf(timebuf,sizeof(timebuf),"%02d:%02d",clockH,clockM);
   stackDialogText(timebuf,12,42,442,5,UI_INK);
-  char sound[20],bright[20],lang[20];
+  char sound[20],bright[20],lang[20],fps[12];
   if(audioEnabled())snprintf(sound,sizeof(sound),"VOL %u",unsigned(VOL_LEVELS-audioVolume()));
   else snprintf(sound,sizeof(sound),"VOL OFF");
   snprintf(bright,sizeof(bright),"BRI %u",unsigned(BRIGHT_LEVELS-userDim));
   snprintf(lang,sizeof(lang),"LANG %s",LANG_CODES[gLang]);
-  const char* labels[]={ "H -","H +","M -","M +",sound,bright,lang,"OK","X" };
-  for(int i=0;i<9;i++){
+  snprintf(fps,sizeof(fps),"FPS %u",unsigned(stackTargetFps));
+  const char* labels[]={ "H -","H +","M -","M +",sound,bright,lang,"OK","X",fps };
+  for(int i=0;i<tpkhome::CLOCK_CONTROL_COUNT;i++){
     auto b=tpkhome::clockControl(i);
     stackDialogBox(b,i==7?UI_BAR_OK:UI_WHITE,UI_INK);
     stackDialogText(labels[i],b.x,b.y+14,b.w,3,i==7?UI_WHITE:UI_INK);
@@ -2612,6 +2616,7 @@ void clockTap(int16_t x, int16_t y) {
   const int item=tpkhome::clockHit(x,y);
   if(item<0)return;
   if(item==8){clockOpen=false;return;}
+  if(item==tpkhome::CLOCK_FPS){stackTargetFps=stackNextFps(stackTargetFps);sfxPlay(SFX_TAP);return;}
   const int xs[]={133,199,281,347,SND_PILL_X+1,BRI_PILL_X+1,LANG_PILL_X+1,233};
   const int ys[]={210,210,210,210,LANG_PILL_Y+1,LANG_PILL_Y+1,LANG_PILL_Y+1,360};
   x=xs[item];y=ys[item];

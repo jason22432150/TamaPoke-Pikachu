@@ -283,6 +283,21 @@ minigames, reboot default and final eFuse checkpoints still pending.
 Head/RGB disable acknowledged. Keep 10 FPS default pending broader tests;
 20 FPS is a practical responsiveness candidate, 30 experimental. Short
 telemetry does not establish battery life, thermal or long-duration stability.
+Owner subsequently reported all seven remaining B10 interactive acceptance
+checks PASS: no flicker/corruption and normal touch at 30 FPS, 90s dim ~4 FPS,
+central rendering stops with screen off, minigames normal, reboot default 10,
+and FPS 60 rejected without changing selection. No additional raw logs supplied.
+B10 feature acceptance complete; final post-game eFuse checkpoint remains pending.
+
+## B11a touch FPS settings (candidate)
+Add a fourth setting pill alongside VOL/BRI/LANG in Clock settings. Tap
+cycles 10 -> 15 -> 20 -> 30 -> 5 -> 10, applies immediately, RAM-only.
+Shared rectangles and host tests cover all ten controls, physical mapping,
+non-overlap and gaps. Static-screen cache key includes target FPS so Serial
+and touch selections remain synchronized. OK applies clock as before; X
+closes without applying clock edits, but does not undo live FPS settings.
+No new NVS keys, display transfer changes or motor output. Exact binary
+review and hardware acceptance required before installation.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.

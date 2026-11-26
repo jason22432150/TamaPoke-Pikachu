@@ -83,6 +83,12 @@ inline uint32_t frameIntervalMs(const PowerCtx &c) {
 inline bool stackFpsAllowed(uint8_t fps) {
   return fps == 5 || fps == 10 || fps == 15 || fps == 20 || fps == 30;
 }
+inline uint8_t stackNextFps(uint8_t fps) {
+  switch(fps){
+    case 5:return 10; case 10:return 15; case 15:return 20;
+    case 20:return 30; case 30:return 5; default:return 10;
+  }
+}
 inline uint32_t stackFrameIntervalMs(const PowerCtx &c, uint8_t fps) {
   const uint32_t base = frameIntervalMs(c);
   if (!base || c.gameOpen || !stackFpsAllowed(fps)) return base;
