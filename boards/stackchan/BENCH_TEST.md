@@ -96,7 +96,12 @@ Do not install a new build from the audit or approval commit. Old approved
 DMA-fix tuple remains available for supervised recovery. Hardware acceptance
 of B6 is partial: owner reported successful ROM-only write/readback on
 2026-11-26, named eFuse comparison unchanged, zero unreadable named fields
-before and after write. First boot and landscape UI remain NOT RUN. Original
+before and after write. Owner subsequently supplied the after-boot report
+(status observable-summary-unchanged, after_write and after_boot both
+changed_fields=[], unreadable_before=0, unreadable_after=0). Named eFuse
+checkpoint comparison PASS (owner report, 2026-11-26); the tool cannot establish
+boot ordering independently. Physical display, touch, actual game startup,
+persistence and post-game eFuse comparison remain unverified. Original
 owner waiver of 60-minute soak stands.
 After installation compare named eFuse fields before, after write, and after
 first boot; validate all landscape screens and LCD FULL/DIRTY counters.
