@@ -137,6 +137,29 @@ Owner serial evidence after START (2026-11-26, candidate 01266e0):
   Repeat with real touch to reset idle before each short test, compare
   off=0 dim=0 game=0 and the first 15 seconds, same pet and screen.
   Do not disable safety/power behavior or repeat the waived soak.
+- Second owner A/B run, candidate 01266e0, matched awake power flags
+  (off=0 dim=0 game=0), same nominal 100 ms frame interval:
+  FULL seq 20-22: 15001 ms / 150 frames, average render 34084.33 us,
+  flush 23523.33 us, loop 1733 us. DIRTY seq 24-26: 15001 ms /
+  150 frames, average render 21633 us, flush 10914 us, loop 1415 us
+  (arithmetic means of three 5-second windows, 50 frames each;
+  loop mean is an unweighted mean of window loop means). Render
+  36.53% lower, flush 53.60% lower, loop mean 18.35% lower; both
+  approximately 10 FPS, zero slow loops, including tail windows 23/27.
+  Maximum loop gap FULL 36262 us, DIRTY 42367 us (initial full
+  invalidation is a possible contributor, not independently traced).
+  FULL LCD frames=182 unchanged=0 rects=3640 pixels=9318400
+  full_pixels=9318400. DIRTY frames=170 unchanged=118 rects=334
+  pixels=159488 full_pixels=8704000: 98.1676% fewer viewport pixels
+  per frame versus full refresh, 69.41% zero-transfer frames.
+  LCD intervals differ from PERF windows; animation sequence not
+  controlled exactly. PASS matched power-state short A/B telemetry;
+  no visual fidelity or general worst-case speedup claim.
+  Free heap 294164/295028 and PSRAM 7813352 stable within the
+  respective windows; PSRAM is 49152 bytes below previous sample
+  after ~24 minutes and intervening workload; not evidence of a leak.
+  Existing 60-minute soak waiver remains; physical UI acceptance pending.
+
 - PERF_MEM at 48927 ms: heap 295316, minimum 290784, largest 249844;
   PSRAM 7862504/8388608 free, largest 7733236; reset 11, CPU 240 MHz.
   Single sample, not leak or stability evidence.
