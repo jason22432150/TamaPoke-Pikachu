@@ -111,8 +111,32 @@ Owner serial evidence after START (2026-11-26, candidate 01266e0):
   pmd.loaded || mon.loaded and the latter legacy fallback mon.loaded only.
 - LCD cache=1 dirty=1 frames=175 unchanged=0 rects=1564 pixels=703360
   full_pixels=8960000: 92.15% fewer viewport pixels versus full refresh,
-  not an elapsed-time or FPS measurement; visual fidelity and matched
-  FULL/DIRTY workload remain unverified.
+  not an elapsed-time or FPS measurement; visual fidelity remains unverified.
+- Owner FULL/DIRTY telemetry (2026-11-26, same candidate):
+  FULL LCD frames=363 unchanged=0 rects=7260 pixels=18585600
+  full_pixels=18585600 (51200 pixels/frame).
+  DIRTY LCD frames=180 unchanged=105 rects=502 pixels=182272
+  full_pixels=9216000 (1012.62 pixels/frame; 98.0222% fewer viewport
+  pixels relative to full refresh, 58.33% no-transfer logical frames).
+  The counters represent each reset-to-LCD? interval, not synchronized
+  with PERF windows. PERF FULL seq 1-10: 47163 ms, 364 frames, off=0
+  dim=0 game=0, frame-weighted flush mean 23589.7 us, mean of window
+  render means 34133.8 us. First 3 windows 15001 ms/150 frames
+  (9.999 FPS). Subsequent idle/calm windows reduced scheduled rate.
+  DIRTY seq 11-19: 44569 ms, 177 frames, off=0 dim=1 game=0,
+  frame-weighted flush mean 10920.6 us, mean of window render means
+  21899.3 us. Observed flush reduction 53.7%, render reduction 35.8%,
+  but no causal speedup/FPS claim: power states and animation workloads
+  differ. FULL two slow loop gaps (max 1321061 us); DIRTY one
+  (216060 us). The incomplete/invalid PERF?' input coincided with
+  a long gap; blocking readStringUntil is a plausible contributor,
+  not established by aggregate timing. Free heap constant within
+  each mode (294452/295316), PSRAM constant 7862504 throughout.
+  PASS for observed transfer savings and basic dirty-mode counters;
+  matched awake A/B and visual fidelity still NOT RUN.
+  Repeat with real touch to reset idle before each short test, compare
+  off=0 dim=0 game=0 and the first 15 seconds, same pet and screen.
+  Do not disable safety/power behavior or repeat the waived soak.
 - PERF_MEM at 48927 ms: heap 295316, minimum 290784, largest 249844;
   PSRAM 7862504/8388608 free, largest 7733236; reset 11, CPU 240 MHz.
   Single sample, not leak or stability evidence.
