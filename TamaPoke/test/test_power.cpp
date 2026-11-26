@@ -284,3 +284,18 @@ TEST(power, stackchan_touch_poll_follows_active_high_fps){
   }
   CHECK_EQ((int)stackTouchPollMs(false,true,255),20);
 }
+
+TEST(power, stackchan_idle_yield_bounded_by_frame_and_activity){
+  PowerCtx c=ctx(0);
+  CHECK_EQ((int)stackIdleDelayMs(c,false,0,100),1);
+  c.idleMs=POWER_CALM_MS+1;
+  CHECK_EQ((int)stackIdleDelayMs(c,false,20,150),4);
+  CHECK_EQ((int)stackIdleDelayMs(c,false,148,150),2);
+  CHECK_EQ((int)stackIdleDelayMs(c,false,150,150),1);
+  CHECK_EQ((int)stackIdleDelayMs(c,true,20,150),1);
+  c.screenOff=true;CHECK_EQ((int)stackIdleDelayMs(c,false,0,0),5);
+  CHECK_EQ((int)stackIdleDelayMs(c,true,0,0),1);
+  c.usb=true;CHECK_EQ((int)stackIdleDelayMs(c,false,0,0),1);c.usb=false;
+  c.charging=true;CHECK_EQ((int)stackIdleDelayMs(c,false,0,0),1);c.charging=false;
+  c.gameOpen=true;CHECK_EQ((int)stackIdleDelayMs(c,false,0,0),1);
+}

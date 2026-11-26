@@ -140,6 +140,17 @@ inline bool amplifierWanted(const PowerCtx &c) {
 
 // pausa del bucle principal en un pase que no dibuja
 inline uint32_t idleDelayMs(const PowerCtx &c) { return c.screenOff ? 20 : 1; }
+// K151: bounded task yield, not MCU sleep or frequency scaling. Keep USB,
+// charging, gestures, games, serial and active rendering on the 1 ms path.
+// Only relax battery-powered calm/off loops; never wait past a legacy frame.
+inline uint32_t stackIdleDelayMs(const PowerCtx &c,bool busy,uint32_t sinceRenderMs,uint32_t interval){
+  if(busy||c.usb||c.charging||c.gameOpen||(!c.screenOff&&c.idleMs<=POWER_CALM_MS))return 1;
+  const uint32_t limit=c.screenOff?5u:4u;
+  if(!interval)return limit;
+  if(sinceRenderMs>=interval)return 1;
+  const uint32_t remaining=interval-sinceRenderMs;
+  return remaining<limit?remaining:limit;
+}
 
 // con la pantalla apagada, o casi apagada (5 min sin tocar), y sin USB se duerme la CPU (light
 // sleep) entre frames y sondeos; con USB no: se perderia el puerto serie de la tarjeta SD

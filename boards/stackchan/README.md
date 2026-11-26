@@ -444,3 +444,9 @@ Awake active 20/30 FPS UI routes cached M5 touch samples at 10 ms instead of
 PERF_TOUCH sample count, gap average/max, sampled edges and stale-page count.
 Does not measure physical contact-to-display latency; no extra M5.update or
 I2C calls, no gesture changes. Hardware validation pending.
+
+## B11f cooperative idle yield (candidate)
+K151 only: on battery, no pending input/serial/audio, calm loops yield up to
+4ms and off loops up to 5ms, bounded by the next legacy frame deadline.
+USB/charging, active UI and minigames retain 1ms. No MCU sleep or clock
+scaling. Actual power savings and wake behavior need hardware validation.

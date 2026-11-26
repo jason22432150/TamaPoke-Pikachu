@@ -345,6 +345,17 @@ observed press/release edges and stale-page sample count. Initial sample
 establishes baseline; intervals across windows counted in following window.
 Not sensor interrupt latency or end-to-end response. Synchronous render can
 still block routing; hardware latency comparison and exact audit pending.
+B11e CI 45858977841: PASS.
+
+## B11f bounded cooperative idle yield (candidate)
+K151 battery-only calm (>60s) loops yield at most 4ms, screen-off at most 5ms;
+cap by time remaining to next legacy render. Active, game, USB, charging,
+held cached touch, audio and pending/discarding serial remain on 1ms path.
+No MCU sleep, clock change, I2C update duplication or power/save policy
+change. Tests cover input/activity overrides and frame deadline. Validate
+battery-mode wake, dim, RGB/head interaction, audio and power button. USB
+telemetry does not measure battery-only yield savings; external measurement
+needed for power claims. Exact combined candidate audit pending.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.

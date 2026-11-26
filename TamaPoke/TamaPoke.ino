@@ -823,8 +823,11 @@ void updateBrightness(uint32_t now) {
 // no perder el puerto serie de la tarjeta SD: se mira sin cache, por si se acaba de enchufar.
 void idleWait(PowerCtx c) {
 #if BOARD_STACKCHAN
-  // No Waveshare GPIO wake configuration on K151.
-  delay(1);
+  // No Waveshare GPIO wake configuration on K151. Only lengthen the
+  // cooperative yield on battery when no input, audio or serial is pending.
+  const bool busy=wasPressed||stackBoard.touch().pressed||audioBusy()||
+      Serial.available()>0||stackSerialLine.pending()!=0||stackSerialLine.discarding();
+  delay(stackIdleDelayMs(c,busy,millis()-lastRender,activeFrameIntervalMs(c)));
 #else
   // no sleep during a gesture/radio operation or while QSPI DMA is in flight
   bool locked = screenIsLocked();
