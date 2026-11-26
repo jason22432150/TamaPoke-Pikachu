@@ -228,6 +228,17 @@ per window (~3.99 FPS), zero slow loops; heap 294840, min 290312, PSRAM
 explicit local-wall-time correction via TIME (rebases saved game clock
 without offline progression), then compare RTC after controlled reboot.
 No firmware change or new Flash installation required for this check.
+Owner subsequently reported RTC correction/reboot test passed (2026-11-26);
+raw clock comparison not supplied. Owner reported repeated head touch events,
+then reported follow-up tests passed and issue no longer present. Cause not
+established; no head sensor policy change. Reopen if reproduced.
+
+## B10 adjustable render cap (candidate, hardware pending)
+K151-only FPS? and FPS 5/10/15/20/30 commands, RAM-only default 10.
+Power-saving limits and 85 ms mini-game cadence retained. Verify active
+PERF windows, wake and dim behavior, gameplay and invalid command handling.
+Actual FPS depends on rendering cost; 30 is a requested cap, not a guarantee.
+Exact built binary must be audited separately before installation.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.

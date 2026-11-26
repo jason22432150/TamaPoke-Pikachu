@@ -397,3 +397,13 @@ BODY RGB ON/AUTO/OFF, BODY RGB?, BODY RGB TEST (red/green/blue, 3 seconds,
 then automatic pet colors). RGB test stops on sleep, off or unsafe battery.
 No new physical motor output, eFuse, or NVS schema changes. Hardware behavior
 and I2C timing are not yet validated. STATS mon agrees with HEALTH on K151.
+
+## B10 adjustable active render FPS (K151 only)
+After START, `FPS?` reports selected target, current interval and theoretical
+cap (thousandths of FPS). `FPS 5`, `FPS 10`, `FPS 15`, `FPS 20`, `FPS 30`
+select a RAM-only target; invalid values are rejected, reboot restores 10.
+The interval is rounded up to milliseconds. Actual rendered FPS is measured
+with PERF ON, not guaranteed by the target. Sleep, inactivity, dim/off and
+low battery retain the existing power-saving policy or a slower selected cap.
+Minigames retain the original 85 ms cadence. No NVS, SPI, motor or eFuse
+changes. Waveshare uses its original frame policy. Hardware acceptance pending.

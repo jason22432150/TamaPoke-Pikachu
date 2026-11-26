@@ -198,3 +198,37 @@ TEST(power, los_niveles_de_volumen_bajan_y_el_alto_es_el_de_siempre) {
   CHECK(sfxAmp(2) > 0);
   CHECK_EQ((int)sfxAmp(7), (int)sfxAmp(2));   // un valor raro guardado no sube el volumen
 }
+
+TEST(power, stackchan_active_fps_choices_and_invalid_values) {
+  PowerCtx c=ctx(0);
+  CHECK_EQ((int)stackFrameIntervalMs(c,5),200);
+  CHECK_EQ((int)stackFrameIntervalMs(c,10),100);
+  CHECK_EQ((int)stackFrameIntervalMs(c,15),67);
+  CHECK_EQ((int)stackFrameIntervalMs(c,20),50);
+  CHECK_EQ((int)stackFrameIntervalMs(c,30),34);
+  CHECK(!stackFpsAllowed(0)); CHECK(!stackFpsAllowed(255));
+  CHECK(!stackFpsAllowed(12));
+  CHECK_EQ((int)stackFrameIntervalMs(c,0),100);
+  CHECK_EQ((int)stackFrameIntervalMs(c,255),100);
+}
+
+TEST(power, stackchan_fps_preserves_saving_and_minigames) {
+  const uint8_t choices[]={5,10,15,20,30};
+  for (uint8_t fps : choices) {
+    PowerCtx c=ctx(0); c.screenOff=true;
+    CHECK_EQ((int)stackFrameIntervalMs(c,fps),0);
+    c.screenOff=false; c.gameOpen=true;
+    CHECK_EQ((int)stackFrameIntervalMs(c,fps),85);
+    c.gameOpen=false; c.batPct=15;
+    CHECK(stackFrameIntervalMs(c,fps)>=frameIntervalMs(c));
+    c.batPct=80; c.sleeping=true;
+    CHECK(stackFrameIntervalMs(c,fps)>=frameIntervalMs(c));
+    c.sleeping=false;
+    for(uint32_t idle=70000;idle<=400000;idle+=10000){
+      c.idleMs=idle; CHECK(stackFrameIntervalMs(c,fps)>=frameIntervalMs(c));
+    }
+  }
+  PowerCtx c=ctx(0); c.batPct=15;
+  CHECK_EQ((int)stackFrameIntervalMs(c,5),400);
+  c.usb=true; CHECK_EQ((int)stackFrameIntervalMs(c,30),34);
+}

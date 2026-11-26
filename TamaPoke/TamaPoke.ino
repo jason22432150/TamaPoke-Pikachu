@@ -76,6 +76,7 @@ static tpkside::Sidebar stackSidebar;
 static tpkside::TouchRouter stackTouchRouter;
 static StackChanCanvas stackCanvas;
 static tpkperf::GamePerf stackPerf;
+static uint8_t stackTargetFps=10; // RAM-only; reboot restores the proven default.
 static StackChanPanel stackPanel;
 static StackChanCanvas *gfx=&stackCanvas;
 static StackChanPanel *panel=&stackPanel;
@@ -95,6 +96,14 @@ Arduino_Canvas *gfx = new Arduino_Canvas(LCD_WIDTH, LCD_HEIGHT, panel);
 
 TouchDrvCST92xx touch;
 #endif
+
+static uint32_t activeFrameIntervalMs(const PowerCtx& c) {
+#if BOARD_STACKCHAN
+  return stackFrameIntervalMs(c,stackTargetFps);
+#else
+  return frameIntervalMs(c);
+#endif
+}
 // fuente CJK activa: de momento siempre false, la carga llegara con el
 // soporte de japones/coreano/chino (ver PR #13)
 bool gCjkFont = false;
@@ -704,7 +713,7 @@ void loop() {
   PowerCtx pc = powerCtx(millis());
   audioSetIdle(!amplifierWanted(pc));  // el amplificador consume en reposo
   batSetPollMs(powerCacheMs(pc));
-  uint32_t interval = frameIntervalMs(pc);
+  uint32_t interval = activeFrameIntervalMs(pc);
 #if BOARD_STACKCHAN
   // Brightness-off does not normally lose LCD GRAM, but force a full refresh
   // on wake rather than relying on that property. Static pages also redraw.
@@ -768,7 +777,7 @@ PowerCtx powerCtx(uint32_t now) {
 void wakeUI() {
   if (screenIsLocked()) return;
   uint32_t now = millis();
-  uint32_t iv = frameIntervalMs(powerCtx(now));
+  uint32_t iv = activeFrameIntervalMs(powerCtx(now));
   bool slow = !iv || iv > 100;  // pantalla apagada o ritmo lento: se dibuja ya, sin esperar al frame
   lastInteract = now;
   // el frame forzado respeta los 85 ms entre redibujados (si no, solapa el DMA del anterior)
@@ -885,6 +894,22 @@ void handleSerial() {
     Serial.printf("SERIAL accepted=%lu rejected=%lu pending=%u discarding=%d budget=128 max=256\n",
       (unsigned long)stackSerialLine.accepted(),(unsigned long)stackSerialLine.rejected(),
       unsigned(stackSerialLine.pending()),stackSerialLine.discarding());
+    Serial.println("DONE");return;
+  }
+  if(line=="FPS?" || line.startsWith("FPS ")){
+    if(line!="FPS?"){
+      uint8_t requested=0;
+      if(line=="FPS 5")requested=5;
+      else if(line=="FPS 10")requested=10;
+      else if(line=="FPS 15")requested=15;
+      else if(line=="FPS 20")requested=20;
+      else if(line=="FPS 30")requested=30;
+      if(!stackFpsAllowed(requested)){Serial.println("ERR FPS use 5/10/15/20/30");return;}
+      stackTargetFps=requested;
+    }
+    const uint32_t iv=activeFrameIntervalMs(powerCtx(millis()));
+    Serial.printf("FPS target=%u interval_ms=%lu cap_milli=%lu ram_only=1\n",
+      unsigned(stackTargetFps),(unsigned long)iv,(unsigned long)(iv?1000000UL/iv:0));
     Serial.println("DONE");return;
   }
   if(stackHead.command(line))return;
@@ -3644,7 +3669,7 @@ void drawPetPMD() {
         // 30 px/s de diseno (3 px por frame a 10 fps), midiendo el tiempo real: con menos frames
         // por segundo camina igual de rapido
         uint32_t dt = walkLast ? now - walkLast : 100;
-        uint32_t cap = frameIntervalMs(powerCtx(now)) + 100;  // un hueco mayor (otra pantalla de por medio) no es un paso largo
+        uint32_t cap = activeFrameIntervalMs(powerCtx(now)) + 100;  // un hueco mayor (otra pantalla de por medio) no es un paso largo
         if (dt > cap) dt = cap;
         walkLast = now;
         float step = 30.0f * dt / 1000.0f;

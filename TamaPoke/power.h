@@ -78,6 +78,22 @@ inline uint32_t frameIntervalMs(const PowerCtx &c) {
   return ms;
 }
 
+// K151-only caller: selected active render cap, not panel refresh or game speed.
+// Keep the original mini-game cadence and never accelerate power-saving states.
+inline bool stackFpsAllowed(uint8_t fps) {
+  return fps == 5 || fps == 10 || fps == 15 || fps == 20 || fps == 30;
+}
+inline uint32_t stackFrameIntervalMs(const PowerCtx &c, uint8_t fps) {
+  const uint32_t base = frameIntervalMs(c);
+  if (!base || c.gameOpen || !stackFpsAllowed(fps)) return base;
+  const uint32_t requested = (1000u + fps - 1u) / fps;
+  if (c.sleeping || c.idleMs > POWER_CALM_MS || batteryLow(c)) {
+    const uint32_t cap = batteryLow(c) ? requested * 2u : requested;
+    return base > cap ? base : cap;
+  }
+  return requested;
+}
+
 // el amplificador del altavoz consume en reposo: solo se tiene encendido mientras
 // alguien puede estar jugando
 inline bool amplifierWanted(const PowerCtx &c) {
