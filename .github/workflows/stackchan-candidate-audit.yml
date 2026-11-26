@@ -19,41 +19,41 @@ jobs:
         with:
           name: stackchan-K151-game-compile-evidence-NOT-FOR-FLASH
           github-token: ${{ github.token }}
-          run-id: 45675596329
+          run-id: 45824080265
           path: /tmp/k151-review/app
       - uses: actions/download-artifact@v4
         with:
           name: stackchan-source-bootloader-NOT-FOR-FLASH
           github-token: ${{ github.token }}
-          run-id: 45675596329
+          run-id: 45824080265
           path: /tmp/k151-review/boot
       - uses: actions/download-artifact@v4
         with:
           name: stackchan-alpha-0.1.0-source-bootloader-NOT-FOR-FLASH
           github-token: ${{ github.token }}
-          run-id: 45675596329
+          run-id: 45824080265
           path: /tmp/k151-review/paired
       - name: Verify fixed source and artifact identity
         shell: bash
         run: |
           cd /tmp/k151-review
           sha256sum -c <<'HASHES'
-          49452f99c59d61761a140632281b0f513e2b8a27c29f7260e0c3ab4b72daca7e  boot/bootloader.elf
-          f544e71912a4ef440c8f428ac6fd1b5cc1cb1c5bd3b6a007cf267f0dea5fb648  boot/bootloader.bin
+          4b56f1193facdd2cbbb2106adee38f9f99d4a3548e27ccb02aff6224f4e60c17  boot/bootloader.elf
+          35c75da84b1221eaa0e345b0229ff2f4bbcc11e31d17150747f13c223c47e9cb  boot/bootloader.bin
           796cd0b9490b6ea13b57a28eadd10d2b272f88ac8924eb2eb1ff1eebfa380b58  boot/sdkconfig
           58fe61ac2b2f77996a5c6acd7cc79dcb4c4138e39d91b7190ef2d4a90a6c16a4  boot/bootloader-sdkconfig.h
-          2140a5eae4b63bbc9f5c25e25ca563529f8fb8323f5b45589b424fe40c6dbeb2  app/TamaPoke.ino.elf
-          cfa38d8a5b64fa3252557e4bb1aa53f05bd54ea200d43a52ba8d83de321eb571  app/TamaPoke.ino.map
+          8b9d67827266a2924f95551e3dfe58b5e7f5edcb77de0ad27cbb5fd99c3d9632  app/TamaPoke.ino.elf
+          655b9a3d02dafb70871b20f61cf8d130d168f143417e18d2af667271e51ee608  app/TamaPoke.ino.map
           a635f5a6c6f64e1fbc2d7de36d58269d145f70e272220205445dd8b45c9f2035  app/sdkconfig
-          379d3e349cb0d8cfc5cec0b9014d7ed387558530ade8e4a034a1f0d82d9c554a  paired/TamaPoke.ino.bin
-          f544e71912a4ef440c8f428ac6fd1b5cc1cb1c5bd3b6a007cf267f0dea5fb648  paired/TamaPoke.ino.bootloader.bin
+          ae2c6b9bfd38a5ef2c74b5ca62fefd94876297e2d9e4080c3ae4e26eed7d9312  paired/TamaPoke.ino.bin
+          35c75da84b1221eaa0e345b0229ff2f4bbcc11e31d17150747f13c223c47e9cb  paired/TamaPoke.ino.bootloader.bin
           48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b  paired/TamaPoke.ino.partitions.bin
           7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f  paired/ota_data_initial.bin
           HASHES
           python3 - <<'PY'
           import json
           from pathlib import Path
-          commit="01266e011f68e7e4c78c093efb0d4f882b70ee45"
+          commit="a3e4428e7f82ed450450a45c8550dc701de4e48b"
           for p in ("boot/manifest.json","app/boot-evidence.json","paired/manifest.json"):
               d=json.loads(Path(p).read_text())
               if d["source_commit"]!=commit or d["flash_authorized"] is not False:
@@ -80,7 +80,7 @@ jobs:
           inputs=(
               ("boot", "boot/manifest.json","bootloader_efuse_symbols"),
               ("app", "app/boot-evidence.json","application_efuse_symbols"))
-          result={"source_commit":"01266e011f68e7e4c78c093efb0d4f882b70ee45",
+          result={"source_commit":"a3e4428e7f82ed450450a45c8550dc701de4e48b",
                   "flash_authorized":False,"safety_attested":False,"images":{}}
           for name,source,key in inputs:
               evidence=json.loads(Path(source).read_text())[key]
@@ -120,7 +120,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: stackchan-01266e0-exact-ELF-disassembly-NOT-FOR-FLASH
+          name: stackchan-a3e4428-exact-ELF-disassembly-NOT-FOR-FLASH
           path: /tmp/k151-review/report/
           if-no-files-found: error
           retention-days: 14
