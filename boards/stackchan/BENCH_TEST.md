@@ -205,6 +205,16 @@ and combined PERF telemetry. Existing blocking SD PUT handler is not
 part of non-blocking parser acceptance. No change to NVS schema or
 partition layout; RTC issue not yet fixed.
 
+Owner-reported installation and checkpoint evidence (2026-11-26): exact B8
+candidate installed with the allowlisted installer; write-verified.json reports
+observable-summary-unchanged, changed_fields=[], unreadable_before=0 and
+unreadable_after=0. The after-boot command reports the same for both
+comparisons and overall observable-summary-unchanged. Named eFuse checkpoint
+comparison PASS (owner report); protected/reserved bits and boot ordering
+are not independently established. B8 START, gameplay, serial fragmentation,
+head touch, RGB optical output and combined performance remain NOT RUN or
+not yet reported. Preserve installed candidate for these tests.
+
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
 - Optional: capture and verify two full factory reads using stackchan_backup.py. Store privately. Factory restoration is outside project scope.
