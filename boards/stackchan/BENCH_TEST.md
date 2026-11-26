@@ -218,6 +218,17 @@ serial input is not explicitly confirmed. Detailed UI, RTC retention and final
 post-game eFuse checks remain outstanding. Preserve installed candidate for
 these tests.
 
+B8 owner telemetry (2026-11-26): TIME values 1795643880 and 1795643936
+advance 56 seconds, encoding 2026-11-25 21:58:00 and 21:58:56 as local
+wall time. Suspected calendar offset persists; host time at sampling not
+provided, hardware versus software RTC source and retention unverified.
+PERF seq 56–66, dim=1/off=0/game=0: 11 windows around 5 seconds, 20 frames
+per window (~3.99 FPS), zero slow loops; heap 294840, min 290312, PSRAM
+7813352 and largest PSRAM 7733236 unchanged. Short sample only. Next check
+explicit local-wall-time correction via TIME (rebases saved game clock
+without offline progression), then compare RTC after controlled reboot.
+No firmware change or new Flash installation required for this check.
+
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
 - Optional: capture and verify two full factory reads using stackchan_backup.py. Store privately. Factory restoration is outside project scope.
