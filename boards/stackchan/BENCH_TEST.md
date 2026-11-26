@@ -356,6 +356,32 @@ change. Tests cover input/activity overrides and frame deadline. Validate
 battery-mode wake, dim, RGB/head interaction, audio and power button. USB
 telemetry does not measure battery-only yield savings; external measurement
 needed for power claims. Exact combined candidate audit pending.
+B11f integrated CI 45861451180: all six jobs PASS.
+
+## B11 integrated fixed candidate audit and supervised install gate
+Exact source 0bb39e5292d712007612b248ac005dac1bfc558b, build 45861451180,
+paired artifact 15139620479 (ZIP sha256 728b34a56896d5e1dd3eeb284b101d8a84fb0a39e0830449f9986b874df2ceb2).
+Audit 45864574356, artifact 15140705649, ZIP sha256
+2321ccbe7c9eb61ee795854513521207e2aefc9f400a62f65defd1fbec5ad34e.
+All 11 pinned hashes verified, known MMIO reference sites 7 boot/10 app,
+extracted ranges 10/34, matching B10 audit 45839829181. No known linked
+writer or explicit ROM writer references. Compared complete emitted ranges:
+boot instructions match after location normalization; all 34 app range names
+match. One pre-function literal/data range differs (1486 vs 1481 decoded
+lines); remaining 33 executable listings have matching instruction counts.
+Differences are location/literal-pool relocation, including 43 resolved
+relocated RAM/flash addresses for named helpers, data and log/assert strings;
+resolved MMIO addresses and non-address immediates in compared functions
+match. The pre-function region is not fully interpreted. SDK config, partition
+and OTA data hashes match B10. Source comparison limited to UI, cadence,
+dirty strips, telemetry, touch, cooperative yield, tests and docs/tool gates;
+no eFuse configuration changes. This bounded review cannot exclude all
+indirect/computed paths, ROM behavior or protected/reserved bit changes.
+Only the exact B11 tuple is added to the supervised ROM-only install allowlist;
+retain B10. No rebuild, force, motor, OTA, partition or assets writes.
+Require whitelist CI success before install; pre/write/first boot observable
+checkpoints and B11 interactive acceptance remain pending. Do not claim
+B10 final post-game eFuse comparison was performed; it remains unrecorded.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
