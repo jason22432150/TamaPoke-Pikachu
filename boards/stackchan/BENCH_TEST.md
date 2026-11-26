@@ -264,6 +264,26 @@ was rejected by argparse; subsequent after-boot succeeded. Boot ordering and
 protected/reserved bits are not independently proven. FPS behavior, dim/wake,
 minigames, reboot default and post-game checkpoint remain pending.
 
+Owner B10 FPS serial telemetry: 23 windows, 115093 ms total, zero slow
+loops (>=100 ms), heap 294840/min 290312/largest 249844 and PSRAM
+7813352/largest 7733236 unchanged across windows. Stable-window aggregate
+(target, seq, frames, ms, actual FPS, frame-weighted render/flush ms):
+- 5: 1-5, 125, 25002, 5.000, 22.083/11.035.
+- 10: 6-11, 299, 30040, 9.953, 22.341/11.231.
+- 15: 12-15, 299, 20038, 14.922, 22.269/11.183.
+- 20: 16-17, 198, 10001, 19.798, 21.946/10.925.
+- 30: 21-23, 432, 15004, 28.792, 21.619/10.679.
+Seq 18-20 excluded from stable comparison: 20 target transitions to 10.797,
+30 target reports idle interval 150 ms and 6.598 FPS, then 17.578 and
+28.776 after interaction; consistent with calm-stage/wake policy (dim=0).
+No proof of actual LCD panel refresh cadence; PERF counts central flush calls.
+LCD RESET confirmed but final LCD counters not supplied. Explicit invalid
+FPS value/preserved setting, 90s dim, screen off, visual/touch acceptance,
+minigames, reboot default and final eFuse checkpoints still pending.
+Head/RGB disable acknowledged. Keep 10 FPS default pending broader tests;
+20 FPS is a practical responsiveness candidate, 30 experimental. Short
+telemetry does not establish battery life, thermal or long-duration stability.
+
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
 - Optional: capture and verify two full factory reads using stackchan_backup.py. Store privately. Factory restoration is outside project scope.
