@@ -240,3 +240,37 @@ TEST(power, stackchan_fps_touch_cycle) {
   CHECK_EQ((int)stackNextFps(0),10);
   CHECK_EQ((int)stackNextFps(255),10);
 }
+
+TEST(power, stackchan_precise_period_only_in_active_mode){
+  PowerCtx c=ctx(0);
+  CHECK_EQ((int)stackActivePeriodUs(c,30),33334);
+  CHECK_EQ((int)stackActivePeriodUs(c,15),66667);
+  CHECK_EQ((int)stackActivePeriodUs(c,10),100000);
+  CHECK_EQ((int)stackActivePeriodUs(c,0),0);
+  c.gameOpen=true;CHECK_EQ((int)stackActivePeriodUs(c,30),0);c.gameOpen=false;
+  c.screenOff=true;CHECK_EQ((int)stackActivePeriodUs(c,30),0);c.screenOff=false;
+  c.sleeping=true;CHECK_EQ((int)stackActivePeriodUs(c,30),0);c.sleeping=false;
+  c.batPct=15;CHECK_EQ((int)stackActivePeriodUs(c,30),0);c.usb=true;
+  CHECK_EQ((int)stackActivePeriodUs(c,30),33334);
+  c.idleMs=POWER_CALM_MS+1;CHECK_EQ((int)stackActivePeriodUs(c,30),0);
+}
+TEST(power, stackchan_cadence_compensates_small_jitter_without_bursts){
+  StackFrameCadence c;
+  int count=0;
+  for(uint32_t t=0;t<10000000;t+=1000)if(c.due(t,33334))++count;
+  CHECK_EQ(count,300);
+  c.reset();CHECK(c.due(0,33334));CHECK(!c.due(33000,33334));
+  CHECK(c.due(34000,33334));CHECK(!c.due(34000,33334));
+  CHECK(c.due(67000,33334));
+  CHECK(c.due(500000,33334));CHECK(!c.due(500000,33334));
+  CHECK(!c.due(533000,33334));CHECK(c.due(534000,33334));
+  c.legacyAttempt(600000);CHECK(!c.due(610000,50000));CHECK(c.due(650000,50000));
+  CHECK(!c.due(660000,33334));CHECK(c.due(684000,33334));
+}
+TEST(power, stackchan_cadence_micros_wrap){
+  StackFrameCadence c;
+  CHECK(c.due(0xfffffff0u,33334));
+  CHECK(!c.due(30000,33334));CHECK(c.due(34000,33334));
+  CHECK(!c.due(34000,33334));CHECK(!c.due(34001,0));
+  c.reset();CHECK(c.due(34001,33334));
+}

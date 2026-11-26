@@ -77,6 +77,7 @@ static tpkside::TouchRouter stackTouchRouter;
 static StackChanCanvas stackCanvas;
 static tpkperf::GamePerf stackPerf;
 static uint8_t stackTargetFps=10; // RAM-only; reboot restores the proven default.
+static StackFrameCadence stackCadence;
 static StackChanPanel stackPanel;
 static StackChanCanvas *gfx=&stackCanvas;
 static StackChanPanel *panel=&stackPanel;
@@ -720,12 +721,24 @@ void loop() {
   static bool previousOff=false;
   if(previousOff && !pc.screenOff){
     stackCanvas.invalidate();stackInvalidateStaticScreen();
+    stackCadence.reset();
   }
   previousOff=pc.screenOff;
+  const uint32_t precise=stackActivePeriodUs(pc,stackTargetFps);
+  const uint32_t scheduleNow=micros();
+  const bool frameDue=precise?stackCadence.due(scheduleNow,precise):
+      (interval && now-lastRender>=interval);
+  if(frameDue && !precise)stackCadence.legacyAttempt(scheduleNow);
+#else
+  const bool frameDue=interval && now-lastRender>=interval;
 #endif
   bool drewFrame = false;
-  if (interval && now - lastRender >= interval) {
-    lastRender = now;
+  if (frameDue) {
+#if BOARD_STACKCHAN
+    lastRender=millis();
+#else
+    lastRender=now;
+#endif
 #if BOARD_STACKCHAN
     const auto framePage=stackHomePage();
     const uint8_t frameToken=stackPageToken(framePage);
@@ -907,9 +920,13 @@ void handleSerial() {
       if(!stackFpsAllowed(requested)){Serial.println("ERR FPS use 5/10/15/20/30");return;}
       stackTargetFps=requested;
     }
-    const uint32_t iv=activeFrameIntervalMs(powerCtx(millis()));
-    Serial.printf("FPS target=%u interval_ms=%lu cap_milli=%lu ram_only=1\n",
-      unsigned(stackTargetFps),(unsigned long)iv,(unsigned long)(iv?1000000UL/iv:0));
+    const PowerCtx pc=powerCtx(millis());
+    const uint32_t iv=activeFrameIntervalMs(pc);
+    const uint32_t precise=stackActivePeriodUs(pc,stackTargetFps);
+    const uint32_t periodUs=precise?precise:iv*1000u;
+    Serial.printf("FPS target=%u interval_ms=%lu cap_milli=%lu ram_only=1 interval_us=%lu precise=%d\n",
+      unsigned(stackTargetFps),(unsigned long)iv,(unsigned long)(precise?1000UL*stackTargetFps:iv?1000000UL/iv:0),
+      (unsigned long)periodUs,precise!=0);
     Serial.println("DONE");return;
   }
   if(stackHead.command(line))return;

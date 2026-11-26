@@ -298,6 +298,16 @@ and touch selections remain synchronized. OK applies clock as before; X
 closes without applying clock edits, but does not undo live FPS settings.
 No new NVS keys, display transfer changes or motor output. Exact binary
 review and hardware acceptance required before installation.
+B11a CI 45848141028: all six jobs PASS.
+
+## B11b precise active cadence (candidate)
+K151 awake/non-idle/non-low-battery main rendering uses microsecond cadence
+(ceil 1000000/fps) with at most 2 ms polling jitter compensation. A long stall
+rebases the schedule; no catch-up batch. Legacy game, sleep, idle, low battery
+and Waveshare paths retain millisecond policy. FPS? adds interval_us and
+precise=0/1, cap_milli reports selected nominal cap in precise mode. Unit tests
+cover jitter, long stalls, wrap and mode transitions. Actual FPS, touch and
+LCD behavior require new candidate review and hardware verification.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.

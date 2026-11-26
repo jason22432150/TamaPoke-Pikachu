@@ -100,6 +100,33 @@ inline uint32_t stackFrameIntervalMs(const PowerCtx &c, uint8_t fps) {
   return requested;
 }
 
+// Precise cadence only for the normal active K151 renderer. All other
+// modes keep the millisecond policy and its original wake behavior.
+inline uint32_t stackActivePeriodUs(const PowerCtx &c,uint8_t fps){
+  if(c.screenOff||c.gameOpen||c.sleeping||c.idleMs>POWER_CALM_MS||batteryLow(c)||!stackFpsAllowed(fps))return 0;
+  return (1000000u+fps-1u)/fps;
+}
+// One render attempt per loop. Compensate at most 2 ms of polling jitter;
+// rebase on longer stalls, never issue a batch of missed frames. Unsigned
+// elapsed arithmetic supports micros() wrap. No hardware/timer dependency.
+class StackFrameCadence {
+  uint32_t anchor_=0,last_=0,period_=0;
+  bool seen_=false;
+public:
+  void legacyAttempt(uint32_t now){anchor_=last_=now;period_=0;seen_=true;}
+  void reset(){seen_=false;period_=0;}
+  bool due(uint32_t now,uint32_t period){
+    if(!period)return false;
+    if(!seen_){anchor_=last_=now;period_=period;seen_=true;return true;}
+    if(period_!=period){anchor_=last_;period_=period;}
+    const uint32_t elapsed=now-anchor_;
+    if(elapsed<period)return false;
+    const uint32_t late=elapsed-period;
+    anchor_=late<=2000u?anchor_+period:now;
+    last_=now;return true;
+  }
+};
+
 // el amplificador del altavoz consume en reposo: solo se tiene encendido mientras
 // alguien puede estar jugando
 inline bool amplifierWanted(const PowerCtx &c) {

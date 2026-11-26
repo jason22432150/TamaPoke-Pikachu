@@ -414,3 +414,10 @@ Open settings with the sidebar gear or downward swipe; tap `FPS 10` to cycle
 commands. Closing with X does not undo the live FPS selection; no clock
 write is required. Reboot restores 10. Other settings retain their actions.
 Hardware acceptance and exact candidate audit pending.
+
+## B11b precise active cadence (K151 candidate)
+Normal awake main rendering uses a microsecond phase with bounded 2 ms
+jitter compensation (no backlog after long stalls). `FPS?` adds `interval_us`
+and `precise`; `interval_ms` remains the rounded policy value. The nominal
+cap is reported for precise mode; achieved FPS still requires PERF telemetry.
+Idle, sleep, low battery, minigames and Waveshare retain legacy cadence.
