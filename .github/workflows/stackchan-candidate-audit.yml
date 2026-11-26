@@ -19,41 +19,41 @@ jobs:
         with:
           name: stackchan-K151-game-compile-evidence-NOT-FOR-FLASH
           github-token: ${{ github.token }}
-          run-id: 45581224571
+          run-id: 45675596329
           path: /tmp/k151-review/app
       - uses: actions/download-artifact@v4
         with:
           name: stackchan-source-bootloader-NOT-FOR-FLASH
           github-token: ${{ github.token }}
-          run-id: 45581224571
+          run-id: 45675596329
           path: /tmp/k151-review/boot
       - uses: actions/download-artifact@v4
         with:
           name: stackchan-alpha-0.1.0-source-bootloader-NOT-FOR-FLASH
           github-token: ${{ github.token }}
-          run-id: 45581224571
+          run-id: 45675596329
           path: /tmp/k151-review/paired
       - name: Verify fixed source and artifact identity
         shell: bash
         run: |
           cd /tmp/k151-review
           sha256sum -c <<'HASHES'
-          256a92121d24b401c11b6895542359d433c2f3ab801f1270ec02a7257e1b9b5a  boot/bootloader.elf
-          2b96dbdd514a69af17c2d6425de8cc10939051e3a03462ae4a2c6ffc1249f512  boot/bootloader.bin
+          49452f99c59d61761a140632281b0f513e2b8a27c29f7260e0c3ab4b72daca7e  boot/bootloader.elf
+          f544e71912a4ef440c8f428ac6fd1b5cc1cb1c5bd3b6a007cf267f0dea5fb648  boot/bootloader.bin
           796cd0b9490b6ea13b57a28eadd10d2b272f88ac8924eb2eb1ff1eebfa380b58  boot/sdkconfig
           58fe61ac2b2f77996a5c6acd7cc79dcb4c4138e39d91b7190ef2d4a90a6c16a4  boot/bootloader-sdkconfig.h
-          b3342c8f95890dc936475a145f80f32133e574156fd652181a711472b6a69506  app/TamaPoke.ino.elf
-          eea16e4de3963326865ab172d4c1672004983459ac3916d1376632b1a3ef0ad8  app/TamaPoke.ino.map
+          2140a5eae4b63bbc9f5c25e25ca563529f8fb8323f5b45589b424fe40c6dbeb2  app/TamaPoke.ino.elf
+          cfa38d8a5b64fa3252557e4bb1aa53f05bd54ea200d43a52ba8d83de321eb571  app/TamaPoke.ino.map
           a635f5a6c6f64e1fbc2d7de36d58269d145f70e272220205445dd8b45c9f2035  app/sdkconfig
-          504181669538c9de2b8a866fb62ff5e44ec8cb6c744dfd9127fedf5a9270e05b  paired/TamaPoke.ino.bin
-          2b96dbdd514a69af17c2d6425de8cc10939051e3a03462ae4a2c6ffc1249f512  paired/TamaPoke.ino.bootloader.bin
+          379d3e349cb0d8cfc5cec0b9014d7ed387558530ade8e4a034a1f0d82d9c554a  paired/TamaPoke.ino.bin
+          f544e71912a4ef440c8f428ac6fd1b5cc1cb1c5bd3b6a007cf267f0dea5fb648  paired/TamaPoke.ino.bootloader.bin
           48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b  paired/TamaPoke.ino.partitions.bin
           7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f  paired/ota_data_initial.bin
           HASHES
           python3 - <<'PY'
           import json
           from pathlib import Path
-          commit="871e6d8851c6b7348bbf5a0d71a80affa10e1e32"
+          commit="01266e011f68e7e4c78c093efb0d4f882b70ee45"
           for p in ("boot/manifest.json","app/boot-evidence.json","paired/manifest.json"):
               d=json.loads(Path(p).read_text())
               if d["source_commit"]!=commit or d["flash_authorized"] is not False:
@@ -80,10 +80,12 @@ jobs:
           inputs=(
               ("boot", "boot/manifest.json","bootloader_efuse_symbols"),
               ("app", "app/boot-evidence.json","application_efuse_symbols"))
-          result={"source_commit":"871e6d8851c6b7348bbf5a0d71a80affa10e1e32",
+          result={"source_commit":"01266e011f68e7e4c78c093efb0d4f882b70ee45",
                   "flash_authorized":False,"safety_attested":False,"images":{}}
           for name,source,key in inputs:
               evidence=json.loads(Path(source).read_text())[key]
+              if evidence["linked_code_symbols"] or evidence["rom_references"]["direct_references"] or evidence["rom_references"]["address_literals"]:
+                  raise SystemExit("unexpected known eFuse writer references in "+name)
               wanted=set()
               for literal in evidence["mmio_screen"]["literal_context"]:
                   for load in literal["explicit_literal_loads"]:
@@ -106,6 +108,11 @@ jobs:
               if seen!=wanted or not wanted or not functions:
                   raise SystemExit("could not locate all known eFuse references in "+name)
               Path(f"report/{name}.efuse-functions.txt").write_text("\n\n".join(functions)+"\n")
+              # Emit the full known-reference functions to the review log as
+              # well as the artifact, allowing inspection without rebuilding.
+              print("BEGIN COMPLETE EFUSE FUNCTIONS "+name)
+              print("\n\n".join(functions))
+              print("END COMPLETE EFUSE FUNCTIONS "+name)
               result["images"][name]={"known_reference_count":len(wanted),
                                       "complete_function_count":len(functions)}
           print(json.dumps(result,indent=2))
@@ -113,7 +120,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: stackchan-871e6d8-exact-ELF-disassembly-NOT-FOR-FLASH
+          name: stackchan-01266e0-exact-ELF-disassembly-NOT-FOR-FLASH
           path: /tmp/k151-review/report/
           if-no-files-found: error
           retention-days: 14
