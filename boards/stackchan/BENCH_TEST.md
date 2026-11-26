@@ -179,6 +179,32 @@ After installation compare named eFuse fields before, after write, and after
 first boot; validate all landscape screens and LCD FULL/DIRTY counters.
 No motor, partition or NVS schema changes are authorized.
 
+## B8 interaction candidate (supervised hardware acceptance pending)
+Exact source a3e4428e7f82ed450450a45c8550dc701de4e48b, build 45824080265
+(all six jobs passed), paired artifact 15119962441 (NOT-FOR-FLASH metadata
+retained). Fixed ELF audit 45826383469, artifact 15119928548: all 11
+pinned hashes passed, 7/10 known boot/app MMIO reference sites located,
+10/34 extracted symbol ranges. No known linked writer symbol or known
+direct/literal ROM writer reference. Compared emitted function listings
+to B6 audit 45726785560: boot instruction listings match after address
+normalization; app function sets and read paths retained. rtc_init
+instruction operands and resolved peripheral targets match after
+literal-pool address relocation normalization; calibration helper
+differences reflect literal relocation and logging strings. The long
+range labeled esp_efuse_is_flash_encryption_enabled-0xe60 is a
+pre-function data/literal region interpreted as instructions, not a
+verified executable function. Bounded evidence only, no proof of
+all indirect paths or protected/reserved bits. Exact tuple authorized
+for supervised ROM-only installation, not any rebuild. B6 and DMA-fix
+tuples retained. New I2C head sensor and RGB behavior, parser latency
+and visual behavior remain physically unverified. No new servo output
+or eFuse programming is intended. Require after-write and first-boot
+named eFuse comparisons before START; then test SERIAL?, fragmented
+PERF?, HEAD? / HEAD OFF / HEAD ON, BODY RGB TEST / AUTO / OFF,
+and combined PERF telemetry. Existing blocking SD PUT handler is not
+part of non-blocking parser acceptance. No change to NVS schema or
+partition layout; RTC issue not yet fixed.
+
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
 - Optional: capture and verify two full factory reads using stackchan_backup.py. Store privately. Factory restoration is outside project scope.

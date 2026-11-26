@@ -70,7 +70,14 @@ class FlashTests(unittest.TestCase):
             "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
             "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
         )
-        self.assertEqual(APPROVED_BUILDS,frozenset({fixed,landscape}))
+        interaction=(
+            "a3e4428e7f82ed450450a45c8550dc701de4e48b",
+            "35c75da84b1221eaa0e345b0229ff2f4bbcc11e31d17150747f13c223c47e9cb",
+            "ae2c6b9bfd38a5ef2c74b5ca62fefd94876297e2d9e4080c3ae4e26eed7d9312",
+            "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+            "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+        )
+        self.assertEqual(APPROVED_BUILDS,frozenset({fixed,landscape,interaction}))
         self.assertEqual(CHECKPOINT_BUILDS,frozenset({approved}))
         names=("TamaPoke.ino.bootloader.bin","TamaPoke.ino.bin",
                "TamaPoke.ino.partitions.bin","ota_data_initial.bin")
@@ -79,7 +86,7 @@ class FlashTests(unittest.TestCase):
                 dict(name=n,sha256=h) for n,h in zip(names,t[1:])])
         with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
             require_approved(as_plan(approved))
-        for candidate in (fixed,landscape):
+        for candidate in (fixed,landscape,interaction):
             require_approved(as_plan(candidate))
             for i in range(len(candidate)):
                 tampered=list(candidate)
@@ -88,6 +95,8 @@ class FlashTests(unittest.TestCase):
                     require_approved(as_plan(tampered))
         with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
             require_approved(as_plan((landscape[0],fixed[1],*landscape[2:])))
+        with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+            require_approved(as_plan((interaction[0],landscape[1],*interaction[2:])))
     def test_unapproved_never_opens_serial(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);bins=root/"bins";bins.mkdir()

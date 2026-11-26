@@ -22,7 +22,9 @@ from stackchan_deploy_review import plan, readback, checkpoints
 # DMA-fix startup was subsequently confirmed by the owner.
 # Landscape B6: exact archived build 45675596329, audit 45726785560.
 # Bounded static review of known MMIO and ROM references; hardware untested.
-# Retain the previously approved DMA-fix tuple for supervised recovery.
+# B8: archived build 45824080265 and exact ELF audit 45826383469.
+# Bounded comparison of known eFuse read paths against B6; hardware untested.
+# Retain the previously approved tuples for supervised recovery.
 APPROVED_BUILDS=frozenset({(
     "871e6d8851c6b7348bbf5a0d71a80affa10e1e32",
     "2b96dbdd514a69af17c2d6425de8cc10939051e3a03462ae4a2c6ffc1249f512",
@@ -33,6 +35,12 @@ APPROVED_BUILDS=frozenset({(
     "01266e011f68e7e4c78c093efb0d4f882b70ee45",
     "f544e71912a4ef440c8f428ac6fd1b5cc1cb1c5bd3b6a007cf267f0dea5fb648",
     "379d3e349cb0d8cfc5cec0b9014d7ed387558530ade8e4a034a1f0d82d9c554a",
+    "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+    "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+),(
+    "a3e4428e7f82ed450450a45c8550dc701de4e48b",
+    "35c75da84b1221eaa0e345b0229ff2f4bbcc11e31d17150747f13c223c47e9cb",
+    "ae2c6b9bfd38a5ef2c74b5ca62fefd94876297e2d9e4080c3ae4e26eed7d9312",
     "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
     "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
 )})
