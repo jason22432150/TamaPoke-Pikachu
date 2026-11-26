@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from stackchan_backup import run_logged, mac_of, parse_table, TABLE_BYTES
 from stackchan_efuse import capture, compare, verify, fields, read_json, checked_crypt_count
 from stackchan_review import security_state
@@ -75,6 +76,80 @@ def rom_write_command(port):
     cmd=serial_prefix(port)
     return [sys.executable,"-c",ROM_WRITE_LAUNCHER,*cmd[3:]]
 
+# Display only transfer telemetry, never private MAC/eFuse/flash logs.
+# esptool 5.1.0 emits CR/LF progress lines with a decimal percentage.
+TRANSFER_PROGRESS = re.compile(
+    rb"(Writing at|Reading from) (0x[0-9a-fA-F]+)\s+\[[=> ]+\]\s+(\d{1,3}(?:\.\d+)?)%")
+class TransferProgress:
+    def __init__(self, emit):
+        self.emit=emit
+        self.pending=b""
+        self.last=None
+
+    def feed(self, data):
+        records=re.split(rb"[\r\n]",self.pending+data)
+        self.pending=records.pop()
+        # With CR-only compact output the newest line is displayed on the next
+        # update; final flush handles any trailing non-newline output.
+        if len(self.pending)>16384:
+            self.pending=self.pending[-16384:]
+        for line in records:
+            self.line(line)
+
+    def line(self,line):
+        m=TRANSFER_PROGRESS.search(line)
+        if not m:return
+        pct=float(m[3])
+        if not 0<=pct<=100:return
+        kind=m[1].decode()
+        # esptool restarts percentages for each image. Do not combine them
+        # into an invented overall byte/elapsed-time percentage.
+        bucket=int(pct)//5
+        if self.last and self.last[0]==kind and self.last[1]==bucket and pct>=self.last[2]:
+            return
+        self.last=(kind,bucket,pct)
+        self.emit(f"{kind} {m[2].decode()}  {pct:5.1f}%")
+
+    def finish(self):
+        self.line(self.pending)
+        self.pending=b""
+
+def progress_message(message):
+    print(message,file=sys.stderr,flush=True)
+
+def run_transfer_logged(args,path,emit=progress_message,timeout=1800):
+    # Non-transfer logs use the unchanged private runner.
+    if not any(a in ("write-flash","read-flash") for a in args):
+        return run_logged(args,path)
+    progress=TransferProgress(emit)
+    deadline=time.monotonic()+timeout
+    # Keep exact raw logs and exclusive creation; file output avoids pipe
+    # deadlocks. Poll only complete output bytes, no command/serial changes.
+    with path.open("xb") as dst, path.open("rb") as src:
+        with subprocess.Popen(args,stdout=dst,stderr=subprocess.STDOUT,
+                              env={**os.environ,"NO_COLOR":"1","PYTHONUNBUFFERED":"1"}) as proc:
+            try:
+                while True:
+                    progress.feed(src.read())
+                    remaining=deadline-time.monotonic()
+                    if remaining<=0:
+                        raise subprocess.TimeoutExpired(args,timeout)
+                    try:
+                        rc=proc.wait(timeout=min(0.2,remaining))
+                        break
+                    except subprocess.TimeoutExpired:
+                        continue
+                progress.feed(src.read())
+                progress.finish()
+            except BaseException:
+                if proc.poll() is None:
+                    proc.kill()
+                proc.wait()
+                raise
+    if rc:
+        raise RuntimeError(f"command failed; inspect {path.name}")
+    return path.read_text(encoding="utf-8",errors="replace")
+
 def probe(candidate,port,out,runner=run_logged,snapshot=capture):
     candidate=candidate.resolve();out=out.absolute()
     p=plan(candidate)
@@ -124,15 +199,17 @@ def probe(candidate,port,out,runner=run_logged,snapshot=capture):
         raise ValueError("device partition table bytes differ; inspect layout-report.json; no write")
     return p,baseline
 
-def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture):
+def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture,progress=lambda _:None):
     candidate=candidate.resolve();out=out.absolute()
     p=plan(candidate)
     require_approved(p) # MUST precede serial connection, even in CLI.
     if not confirm:
         raise ValueError("explicit installation acknowledgement required")
+    progress('[1/5] Preflight: device identity, security and partition checks')
     p2,baseline=probe(candidate,port,out,runner,snapshot)
     if p!=p2:raise ValueError("candidate changed")
     # Stage exact verified bytes privately, then revalidate the staged package.
+    progress("[2/5] Stage verified files and recheck partition table")
     staged=out/"candidate"
     shutil.copytree(candidate,staged,symlinks=True)
     if plan(staged)!=p:raise ValueError("candidate changed while staging")
@@ -154,17 +231,21 @@ def install(candidate,port,out,confirm,runner=run_logged,snapshot=capture):
     for r in p["regions"]:
         if r["name"]!=table_name:
             args.extend([hex(r["offset"]),str(staged/r["name"])])
+    progress("[3/5] Write Flash: per-image transfer percentages")
     runner(rom_write_command(port)+args,out/"write.log")
     # No hard reset. Operator must hold the device in download mode until
     # readback and the second eFuse capture complete.
+    progress("[4/5] Read back and verify all four regions")
     rb=out/"readback";rb.mkdir(mode=0o700)
     for i,r in enumerate(p["regions"]):
         run(["read-flash",hex(r["offset"]),hex(r["size"]),str(rb/r["name"])],f"readback-{i}.log")
     readback(staged,rb)
+    progress("[5/5] Compare eFuse snapshots (read-only)")
     snapshot(port,out/"after-write",runner=runner,before="no-reset")
     result=compare(out/"before",out/"after-write")
     if result["changed_fields"]:raise ValueError("eFuse changed; stop")
     (out/"write-verified.json").write_text(json.dumps(result,indent=2))
+    progress("100% - installation and named eFuse comparison completed; first boot pending")
     return result
 
 def after_boot(port,out,runner=run_logged,snapshot=capture):
@@ -195,10 +276,11 @@ def main():
     a=p.parse_args();os.umask(0o077)
     try:
         if a.action=="probe":
-            probe(a.candidate,a.port,a.out)
+            probe(a.candidate,a.port,a.out,runner=run_transfer_logged)
             print("Read-only checks passed; no write authorized.")
         elif a.action=="install":
-            print(json.dumps(install(a.candidate,a.port,a.out,a.acknowledge_download_mode),indent=2))
+            print(json.dumps(install(a.candidate,a.port,a.out,a.acknowledge_download_mode,
+                                     runner=run_transfer_logged,progress=progress_message),indent=2))
         else:print(json.dumps(after_boot(a.port,a.out),indent=2))
     except (OSError,ValueError,KeyError,TypeError,RuntimeError,subprocess.SubprocessError) as exc:
         print(f"ERROR: {exc}",file=sys.stderr);return 1

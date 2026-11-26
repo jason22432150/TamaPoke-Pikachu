@@ -5,6 +5,10 @@ state and exact partition bytes must still be checked on the target unit.
 Full factory backup is optional. Factory firmware restoration is outside project scope.
 StackChan installation is local USB only, using tools/stackchan_flash.py.
 No web installer, browser flashing or Pages deployment is supported for K151.
+The local CLI displays five installation phases and actual esptool per-image
+write/read percentages (stderr); private logs and JSON output are retained.
+Transfer 100% is not installation success; final completion is emitted only
+following readback and named eFuse comparison. First boot is separate.
 The installer is currently gated; no factory-compatible release exists.
 The smoke sketch does not write Preferences, mount/format SD, touch servos,
 or directly program PMIC registers. M5Unified itself initializes board hardware

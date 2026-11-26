@@ -5,6 +5,8 @@ import types
 import hashlib
 import json
 import unittest
+import subprocess
+from stackchan_flash import TransferProgress, run_transfer_logged
 from unittest.mock import patch
 from stackchan_flash import install,serial_prefix,probe,identity,after_boot,rom_write_command,ROM_WRITE_LAUNCHER,require_approved,APPROVED_BUILDS,CHECKPOINT_BUILDS
 from test_stackchan_efuse import runner as efuse_runner
@@ -13,6 +15,39 @@ from stackchan_package import package
 from test_stackchan_review import image,table
 
 class FlashTests(unittest.TestCase):
+    def test_transfer_progress_partial_records(self):
+        lines=[]
+        p=TransferProgress(lines.append)
+        p.feed(b"MAC: private\rWriting at 0x00000000 [    ]  0.")
+        p.feed(b"0% 0/100 bytes...\rWriting at 0x00000020 [==> ] 50.0%\n")
+        p.feed(b"Writing at 0x00000021 [==> ] 51.0%\rWriting at 0x00000040 [====] 100.0%")
+        p.finish()
+        self.assertEqual(len(lines),3)
+        self.assertIn("0.0%",lines[0])
+        self.assertIn("50.0%",lines[1])
+        self.assertIn("100.0%",lines[2])
+        p.feed(b"\rReading from 0x00008000 [====] 100.0%\n")
+        self.assertIn("Reading from",lines[-1])
+        self.assertNotIn("private"," ".join(lines))
+
+    def test_transfer_runner_logs_and_failures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);lines=[]
+            code="print('Writing at 0x00000000 [====] 100.0%'); print('private')"
+            args=[sys.executable,"-c",code,"write-flash"]
+            log=root/"write.log"
+            self.assertIn("private",run_transfer_logged(args,log,emit=lines.append))
+            self.assertEqual(len(lines),1)
+            self.assertNotIn("private",lines[0])
+            with self.assertRaises(FileExistsError):
+                run_transfer_logged(args,log,emit=lines.append)
+            with self.assertRaisesRegex(RuntimeError,"command failed"):
+                run_transfer_logged([sys.executable,"-c",code+"; raise SystemExit(1)","write-flash"],
+                                    root/"failed.log",emit=lines.append)
+            with self.assertRaises(subprocess.TimeoutExpired):
+                run_transfer_logged([sys.executable,"-c","import time; time.sleep(5)","read-flash"],
+                                    root/"timeout.log",emit=lines.append,timeout=0.1)
+
     def test_failed_boot_candidate_is_withdrawn(self):
         approved=(
             "bb5234ef25ca5903309028b76afcbc29dc414011",
@@ -104,7 +139,10 @@ class FlashTests(unittest.TestCase):
                 log.write_text(report);return report
             out=root/"install"
             with patch("stackchan_flash.APPROVED_BUILDS",frozenset({identity(p)})):
-                self.assertEqual(install(c,"/dev/cu.usbmodem1",out,True,serial)["changed_fields"],[])
+                stages=[]
+                self.assertEqual(install(c,"/dev/cu.usbmodem1",out,True,serial,progress=stages.append)["changed_fields"],[])
+                self.assertEqual(len(stages),6)
+                self.assertTrue(stages[-1].startswith("100%"))
                 self.assertEqual(after_boot("/dev/cu.usbmodem1",out,serial)["status"],"observable-summary-unchanged")
             self.assertEqual(sum("write-flash" in cmd for cmd in commands),1)
             self.assertEqual(sum("read-flash" in cmd for cmd in commands),6)

@@ -94,7 +94,10 @@ bounded evidence, not proof of all computed/indirect paths or reserved bits.
 Exact tuple is added to the installer gate for supervised ROM-only installation.
 Do not install a new build from the audit or approval commit. Old approved
 DMA-fix tuple remains available for supervised recovery. Hardware acceptance
-of B6 remains NOT RUN; original owner waiver of 60-minute soak stands.
+of B6 is partial: owner reported successful ROM-only write/readback on
+2026-11-26, named eFuse comparison unchanged, zero unreadable named fields
+before and after write. First boot and landscape UI remain NOT RUN. Original
+owner waiver of 60-minute soak stands.
 After installation compare named eFuse fields before, after write, and after
 first boot; validate all landscape screens and LCD FULL/DIRTY counters.
 No motor, partition or NVS schema changes are authorized.
