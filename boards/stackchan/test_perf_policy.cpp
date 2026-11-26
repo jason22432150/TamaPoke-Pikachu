@@ -38,6 +38,15 @@ int main(){
   m.stop();m.setDetail(true,5400);assert(m.detailSelected()&&!m.detailEnabled());
   m.flushedDetailed(100,sample,128,1,true,false);assert(m.snapshot(5400).frames==0);
   m.start(5500);assert(m.detailEnabled());
+  m.start(0);m.touchSample(UINT32_MAX-9999,false,false);
+  m.touchSample(0,true,false);m.touchSample(12000,true,true);m.touchSample(25000,false,false);
+  w=m.take(5000);assert(w.touch.samples==4&&w.touch.gap.count==3&&w.touch.gap.mean()==11666&&w.touch.gap.maximum==13000);
+  assert(w.touch.pressed==2&&w.touch.pressEdges==1&&w.touch.releaseEdges==1&&w.touch.stale==1);
+  m.touchSample(35000,true,false);w=m.take(10000);
+  assert(w.touch.samples==1&&w.touch.gap.mean()==10000&&w.touch.pressEdges==1);
+  m.setDetail(false,10000);m.touchSample(45000,false,false);assert(m.snapshot(10000).touch.samples==0);
+  m.setDetail(true,10001);m.touchSample(50000,true,false);w=m.take(15001);
+  assert(w.touch.samples==1&&w.touch.gap.count==0&&w.touch.pressEdges==0);
   Timing t;for(int i=0;i<100;i++)t.add(UINT32_MAX);
   assert(t.mean()==UINT32_MAX);
 }

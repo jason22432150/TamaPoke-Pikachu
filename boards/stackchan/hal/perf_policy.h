@@ -24,17 +24,22 @@ struct FlushDetail {
     if(forced)++full;
   }
 };
+struct TouchDetail {
+  Timing gap;
+  uint32_t samples=0,pressed=0,pressEdges=0,releaseEdges=0,stale=0;
+};
 struct Window {
   uint32_t elapsedMs=0;
   Timing loop,render,flush;
   FlushDetail detail;
+  TouchDetail touch;
   uint32_t frames=0,slowLoops=0;
   uint32_t fpsMilli()const{return elapsedMs?uint32_t(uint64_t(frames)*1000000/elapsedMs):0;}
 };
 constexpr uint32_t REPORT_MS=5000;
 class Monitor {
-  bool enabled_=false,hasLoop_=false,detail_=false;
-  uint32_t startMs_=0,lastLoopUs_=0;
+  bool enabled_=false,hasLoop_=false,detail_=false,hasTouch_=false,lastPressed_=false;
+  uint32_t startMs_=0,lastLoopUs_=0,lastTouchUs_=0;
   Window w_;
 public:
   bool enabled()const{return enabled_;}
@@ -42,12 +47,23 @@ public:
   bool detailSelected()const{return detail_;}
   // Do not mix instrumented and uninstrumented frames in a window.
   void setDetail(bool value,uint32_t ms){if(detail_==value)return;detail_=value;if(enabled_)start(ms);}
-  void start(uint32_t ms){enabled_=true;startMs_=ms;hasLoop_=false;w_=Window{};}
-  void stop(){enabled_=false;hasLoop_=false;}
+  void start(uint32_t ms){enabled_=true;startMs_=ms;hasLoop_=false;hasTouch_=false;w_=Window{};}
+  void stop(){enabled_=false;hasLoop_=false;hasTouch_=false;}
   void loopStart(uint32_t us){
     if(!enabled_)return;
     if(hasLoop_){uint32_t gap=us-lastLoopUs_;w_.loop.add(gap);if(gap>=100000)++w_.slowLoops;}
     lastLoopUs_=us;hasLoop_=true;
+  }
+  void touchSample(uint32_t us,bool pressed,bool stale){
+    if(!detailEnabled())return;
+    auto& t=w_.touch;++t.samples;
+    if(pressed)++t.pressed;
+    if(stale)++t.stale;
+    if(hasTouch_){
+      t.gap.add(us-lastTouchUs_);
+      if(pressed!=lastPressed_){if(pressed)++t.pressEdges;else ++t.releaseEdges;}
+    }
+    hasTouch_=true;lastTouchUs_=us;lastPressed_=pressed;
   }
   void rendered(uint32_t us){if(enabled_)w_.render.add(us);}
   void flushed(uint32_t us){if(enabled_){w_.flush.add(us);++w_.frames;}}

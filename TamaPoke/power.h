@@ -100,6 +100,11 @@ inline uint32_t stackFrameIntervalMs(const PowerCtx &c, uint8_t fps) {
   return requested;
 }
 
+// Route the cached M5 touch sample sooner during active high-FPS UI.
+// Minigame, idle, sleep and dim/off routing intervals are unchanged.
+inline uint32_t stackTouchPollMs(bool game,bool active,uint8_t fps){
+  return game||(active&&stackFpsAllowed(fps)&&fps>=20)?10u:20u;
+}
 // Precise cadence only for the normal active K151 renderer. All other
 // modes keep the millisecond policy and its original wake behavior.
 inline uint32_t stackActivePeriodUs(const PowerCtx &c,uint8_t fps){

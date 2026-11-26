@@ -35,6 +35,11 @@ class GamePerf {
         (unsigned long)d.shadow.mean(),(unsigned long)d.shadow.maximum,
         (unsigned long)d.other.mean(),(unsigned long long)d.pixels,(unsigned long long)d.rects,
         (unsigned long long)d.shadowBytes,(unsigned long)d.unchanged,(unsigned long)d.full);
+      const auto& t=w.touch;
+      Serial.printf("PERF_TOUCH seq=%lu samples=%lu gaps=%lu gap_avg_us=%lu gap_max_us=%lu pressed=%lu press_edges=%lu release_edges=%lu stale=%lu\n",
+        (unsigned long)sequence_,(unsigned long)t.samples,(unsigned long)t.gap.count,
+        (unsigned long)t.gap.mean(),(unsigned long)t.gap.maximum,(unsigned long)t.pressed,
+        (unsigned long)t.pressEdges,(unsigned long)t.releaseEdges,(unsigned long)t.stale);
     }
     memory();
   }

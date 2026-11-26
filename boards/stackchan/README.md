@@ -437,3 +437,10 @@ unchanged and full flush counts. Averages include zero-work flushes. Detail
 mode changes reset the current window. `PERF DETAIL OFF` restores ordinary
 telemetry with no per-strip timer reads. Transfer measures driver-call time,
 not SPI wire activity; sidebar excluded, instrumentation adds overhead.
+
+## B11e adaptive touch routing (candidate)
+Awake active 20/30 FPS UI routes cached M5 touch samples at 10 ms instead of
+20 ms; minigame and other UI state intervals unchanged. PERF DETAIL adds
+PERF_TOUCH sample count, gap average/max, sampled edges and stale-page count.
+Does not measure physical contact-to-display latency; no extra M5.update or
+I2C calls, no gesture changes. Hardware validation pending.

@@ -333,6 +333,18 @@ calls, not a measurement of wire activity; instrumentation adds overhead.
 Sidebar transfers are outside these counts. Compare ordinary PERF and detail
 runs on identical scenes. Host tests cover reset, disabled mode, empty/full
 flushes, phase accounting and residual saturation. Exact audit pending.
+B11d CI 45855869906: PASS.
+
+## B11e adaptive cached touch routing (candidate)
+Active awake UI at target 20/30 FPS routes M5 cached samples every 10 ms
+instead of 20 ms. Other UI states and minigames retain 20/10 ms respectively.
+M5.update remains once per loop; no parallel I2C, extra sensor reads or
+changes to gesture thresholds, touch ownership or stale-page guards.
+PERF DETAIL adds PERF_TOUCH with sampled route gaps, pressed samples,
+observed press/release edges and stale-page sample count. Initial sample
+establishes baseline; intervals across windows counted in following window.
+Not sensor interrupt latency or end-to-end response. Synchronous render can
+still block routing; hardware latency comparison and exact audit pending.
 
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.

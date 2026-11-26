@@ -274,3 +274,13 @@ TEST(power, stackchan_cadence_micros_wrap){
   CHECK(!c.due(34000,33334));CHECK(!c.due(34001,0));
   c.reset();CHECK(c.due(34001,33334));
 }
+
+TEST(power, stackchan_touch_poll_follows_active_high_fps){
+  const uint8_t choices[]={5,10,15,20,30};
+  for(uint8_t fps:choices){
+    CHECK_EQ((int)stackTouchPollMs(false,true,fps),fps>=20?10:20);
+    CHECK_EQ((int)stackTouchPollMs(false,false,fps),20);
+    CHECK_EQ((int)stackTouchPollMs(true,false,fps),10);
+  }
+  CHECK_EQ((int)stackTouchPollMs(false,true,255),20);
+}

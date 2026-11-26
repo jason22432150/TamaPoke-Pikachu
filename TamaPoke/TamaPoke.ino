@@ -1141,8 +1141,12 @@ void handleTouch() {
 #endif
   static uint32_t lastPoll = 0;
 #if BOARD_STACKCHAN
-  // M5.update remains on the loop task; no concurrent I2C or display access.
-  const uint32_t pollMs=(gameOpen||sackOpen)?10:20;
+  // M5.update already runs once per loop; this gates routing of its cached
+  // touch sample, not extra I2C reads. Keep all gesture ownership rules.
+  const uint32_t pollNow=millis();
+  const bool fastUi=!screenOff&&!pet.sleeping&&dimStage==0&&
+      idleSince(pollNow,lastInteract)<=POWER_CALM_MS;
+  const uint32_t pollMs=stackTouchPollMs(gameOpen||sackOpen,fastUi,stackTargetFps);
 #else
   const uint32_t pollMs=20;
 #endif
@@ -1156,7 +1160,9 @@ void handleTouch() {
   const bool landscape=stackCanvas.landscapePresented();
   const auto page=stackHomePage();
   // Do not act on stale pixels while a new dialog or page awaits rendering.
-  if(page!=stackPresentedPage || stackPageToken(page)!=stackPresentedToken || landscape!=tpkhome::landscape(page)){
+  const bool stale=page!=stackPresentedPage || stackPageToken(page)!=stackPresentedToken || landscape!=tpkhome::landscape(page);
+  if(stackPerf.monitor().detailEnabled())stackPerf.monitor().touchSample(micros(),physical.pressed,stale);
+  if(stale){
     stackTouchRouter.block(physical);
     wasPressed=false;holdFired=false;swallowGesture=true;
     if(physical.pressed){screenOff=false;wakeUI();}
