@@ -33,6 +33,10 @@ from stackchan_deploy_review import plan, readback, checkpoints
 # B11m: archived build 45945886585, exact ELF audit 45956353073.
 # Owner reports 0/5 battery cold starts; withdraw from new writes pending diagnosis.
 # Retain only for read-only verification of an existing installation.
+# B11n2: archived build 45998796326, exact ELF audit 46002623336.
+# Bounded manual trace/MMIO and known eFuse reference comparison. Diagnostic
+# installation only: supervised USB baseline and warm reset first; no battery
+# attempt until separately reviewed. B11m remains withdrawn.
 # Retain the previously approved tuples for supervised recovery.
 APPROVED_BUILDS=frozenset({(
     "871e6d8851c6b7348bbf5a0d71a80affa10e1e32",
@@ -70,7 +74,12 @@ APPROVED_BUILDS=frozenset({(
     "b9d4470ee0c4ac7053a8b6ff388e1760db76bc51bbf8efbbd2b2f4f853e9a54a",
     "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
     "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
-
+),(
+    "6d1b2183e6717bcde9b905178826a0f06d6bd584",
+    "225c3addcce44aea056a1f37c2497cf69c157f0c5ab95c0409bd6a9e253fae19",
+    "d7eb8ad05252e5d7be92ae62d2150c0f3abaefa82371c39b6afd523b6cc2f4ad",
+    "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+    "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
 )})
 # Previously approved images may still be verified, read-only.
 CHECKPOINT_BUILDS=frozenset({(

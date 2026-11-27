@@ -597,3 +597,43 @@ Capture reset_reason and prior/current on USB before/after controlled warm
 reset. Retain all logs. If power loss destroys trace, design one-stage
 isolation candidates after separate review. Do not copy original PMIC voltage,
 charging, protection, NVS erase or servo settings. No allowlist expansion here.
+
+### B11n2 exact artifact review and USB-only diagnostic gate
+Source 6d1b2183e6717bcde9b905178826a0f06d6bd584, CI 45998796326 six jobs PASS.
+Paired artifact 15197443195, ZIP SHA256
+ a385b6e8df3c189eadf64a507104035ee403a69faac0115c5ec35a3e17920624.
+Audit 46002623336 PASS; artifact 15198672626, ZIP SHA256
+ 2b2a4e6cd58ac2995589d515d73b847e906e82015418bd55458de0fb1fa22758.
+Audit ZIP downloaded and digest verified. Eleven pinned hashes match. Known
+writer symbol/direct ROM reference/address-literal checks empty; boot/app
+reference counts 7/10, extracted function ranges 10/34. B11m comparison:
+10 boot and 33 app executable ranges match after address relocation
+normalization, 51 resolved literal relocations in app; one pre-function data
+range changed length 1482 to 1487 lines and remains incompletely interpreted.
+Not a proof of absence of all indirect writers or protected eFuse changes.
+RTC slots at 0x50000200, 88 bytes, NOBITS .rtc_noinit. Reviewed tpk_boot_mark
+at 0x4200c704: bounds, checksum call, alternating 44-byte slot stores, zero
+checksum first, memw, final checksum last, no I2C/Flash/NVS calls in marker.
+Reviewed tpk_boot_begin at 0x4200c808: both slot reads, validation, previous
+copy, esp_reset_reason. Restart 0x4200c9a4: stage 29 then esp_restart.
+Reviewed PSRAM pre/post, M5 pre/post, first boost write markers and failure
+branches in GFX and Unified; LDO/backlight markers; PMIC array write markers;
+_core_s3_output stages 39/40/41 and setExtOutput stages 37/38 including cancel
+branch. Both recovery tables in file-backed segments at 0x3c12646c and
+0x3c1287bc, both loops reference respective table and retain ROM delay calls
+and error branches. Diagnostic stage details are only the last event and
+first error, not a full ordered event log. Added RTC stores can perturb timing.
+Static checks do not attest actual retention, electrical behavior or root cause.
+Allow exact B11n2 tuple ONLY for supervised diagnostic installation after
+whitelist CI passes; B11m remains checkpoint-only. Before installation get
+post-B11m read-only eFuse comparison in new output directory; no writes if
+changed/unreadable fields. Keep USB connected, SD removed; pause in DIAG
+before game. Capture complete USB log and BOOTTRACE? at menu. Verify
+post-first-boot named eFuse checkpoint before additional reset. Reboot on USB,
+pause again, BOOTTRACE? then BOOTTRACE RESTART while paused; capture startup
+and BOOTTRACE? after reset. Expect prior last=29 and prior attempt+1=current
+attempt and software reset reason if retained; otherwise record actual values.
+No battery-only start until warm-reset evidence reviewed; no power policy or
+charging changes, no motor output, no NVS migration, no partition changes.
+A subsequent power-on may lose RTC data or retain stale prior; never treat
+absence/presence alone as proof of battery fault location.
