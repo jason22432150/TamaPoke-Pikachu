@@ -431,6 +431,7 @@ static void stackBootWait(){
   stackBootMenu();
   tpk_boot_mark(tpktrace::MenuReady,0);
   tpk_boot_report();
+  tpk_pmic_report();
   tpkboot::Gate gate(millis());
   int shown=-2;
   for(;;){
@@ -442,6 +443,7 @@ static void stackBootWait(){
       else if(s=="DIAG")command=tpkboot::Command::Diagnostic;
       else if(s=="BODY CALIBRATION")command=tpkboot::Command::Calibration;
       else if(s=="BOOTTRACE?")tpk_boot_report();
+      else if(s=="PMIC?")tpk_pmic_report();
       else if(s=="BOOTTRACE RESTART"){
         if(!gate.automatic())tpk_boot_restart();
         else Serial.println("ERR BOOTTRACE pause in DIAGNOSTIC MODE first");
@@ -969,6 +971,7 @@ void handleSerial() {
 #endif
 #if BOARD_STACKCHAN
   if(line=="BOOTTRACE?"){tpk_boot_report();return;}
+  if(line=="PMIC?"){tpk_pmic_report();return;}
   if(line=="LCD?" || line=="LCD RESET" || line=="LCD FULL" || line=="LCD DIRTY"){
     if(line=="LCD RESET")stackCanvas.resetLcdCounters();
     else if(line=="LCD FULL")stackCanvas.setDirtyEnabled(false);

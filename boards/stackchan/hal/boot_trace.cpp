@@ -12,6 +12,7 @@ static Record current, previous;
 static int slot=-1;
 static bool started=false, previousValid=false, earlyDone=false;
 static uint32_t resetReason;
+static tpkpmic::Snapshot pmicSnapshot={};
 static Record readSlot(int i){
   const volatile Record& s=slots[i];
   return {s.magic,s.seq,s.attempt,s.seen_lo,s.seen_hi,s.last,s.detail,
@@ -36,6 +37,31 @@ static void printRecord(const char* label,const Record& r){
 }
 }
 extern "C" bool tpk_boot_early(){return started&&!earlyDone;}
+extern "C" bool tpk_pmic_claim(){
+  if(!tpk_boot_early()||pmicSnapshot.attempted)return false;
+  pmicSnapshot.attempted=true;
+  return true;
+}
+extern "C" void tpk_pmic_record(uint8_t reg,bool ok,uint8_t value){
+  if(!pmicSnapshot.attempted||!tpk_boot_early()||!ok)return;
+  for(unsigned i=0;i<tpkpmic::count;++i){
+    if(tpkpmic::registers[i]==reg){
+      pmicSnapshot.value[i]=value;
+      pmicSnapshot.valid|=uint16_t(1u<<i);
+      return;
+    }
+  }
+}
+void tpk_pmic_report(){
+  Serial.printf("PMIC SNAPSHOT schema=B11O1 source=gfx-before-power-writes attempted=%u valid=0x%04x\n",
+      unsigned(pmicSnapshot.attempted),unsigned(pmicSnapshot.valid));
+  for(unsigned i=0;i<tpkpmic::count;++i){
+    if(pmicSnapshot.valid&(1u<<i))
+      Serial.printf("PMIC reg=0x%02x value=0x%02x\n",unsigned(tpkpmic::registers[i]),unsigned(pmicSnapshot.value[i]));
+    else Serial.printf("PMIC reg=0x%02x value=unavailable\n",unsigned(tpkpmic::registers[i]));
+  }
+  Serial.println("DONE PMIC");
+}
 extern "C" void tpk_boot_mark(uint32_t stage,uint32_t detail){
   // Synchronous startup task only. No Serial, allocation, I2C or Flash/NVS.
   if(!started||stage<tpktrace::Setup||stage>tpktrace::ExtI2cFail)return;

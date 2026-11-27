@@ -695,3 +695,29 @@ If RTC evidence is absent/stale or cannot be attributed, prioritize isolated
 startup boundaries before M5.begin, PMIC-before-AW9523/backlight ordering,
 and qualified independent capture. Do not change protection or blindly
 copy PMIC register values. No firmware or allowlist changes in this record.
+
+### B11o.1 early PMIC read-only snapshot (candidate, NOT FOR FLASH)
+Owner recovery report: reset_reason=1, prior_valid=0, prior_attribution=none,
+current.last=26, error_stage/detail=0. No attributable failed-attempt trace;
+absence is not proof that setup never ran or that PMIC shut off. B11n battery
+start remains FAIL; final post-failure named checkpoint not yet supplied.
+Upstream M5Unified PR381 and M5GFX PR319 address BUS_OUT_EN inrush on weak
+USB with no battery, not demonstrated K151 battery-only root cause. Both
+also disable DCDC UVP shutdown; do NOT port protection changes. References:
+https://github.com/m5stack/M5Unified/pull/381
+https://github.com/m5stack/M5GFX/pull/319
+AXP2101 datasheet v1.0 sec 6.13.2.18: REG21 read-only, POR reset; bits
+5/3 denote DCDC/VSYS UV shutdown, 7/6/4 thermal/OV, 2/1/0 EN/software/key.
+IRQ 48-4A W1C: read only, never clear; IRQ enables 40-42 read only in this
+instrumentation. Capture after existing AW9523 ID check before GFX GPIO,
+latch, direction and LDO writes, once per boot using existing I2C bus.
+REG21 first, then 20,00,01,22,23,24,48,49,4A,40,41,42. Capture into
+ordinary RAM; valid mask differentiates failed read from zero. PMIC? prints
+cached snapshot at menu or game, no new I2C access. No new PMIC register-value
+writes, no new bus setup, no NVS diagnostic writes, no RTC schema change.
+M5Unified initialization may alter later status; early snapshot is not a
+live waveform, may retain stale events or lose them at POR. Added reads can
+perturb timing. B11m/B11n precharge policy remains unchanged for this
+observation-only candidate; no new battery attempt authorized. Do not
+reinstall B11n; first review exact B11o ELF and decide whether noninvasive
+hardware/support route or supervised USB-only baseline is warranted.

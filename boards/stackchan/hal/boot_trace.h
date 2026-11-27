@@ -56,6 +56,30 @@ inline void advance(Record& r,Stage stage,uint32_t detail){
   r.check=checksum(r);
 }
 }
+namespace tpkpmic {
+// PWROFF first, then power-on/status, protection configuration and IRQ latches.
+// IRQ registers are W1C: never clear them here. No arbitrary register access.
+constexpr uint8_t registers[]={0x21,0x20,0x00,0x01,0x22,0x23,0x24,
+                               0x48,0x49,0x4a,0x40,0x41,0x42};
+constexpr unsigned count=sizeof(registers)/sizeof(registers[0]);
+static_assert(count<=16,"validity mask capacity");
+struct Snapshot {
+  bool attempted;
+  uint16_t valid;
+  uint8_t value[count];
+};
+template<class Read> void capture(Snapshot& s,Read read){
+  if(s.attempted)return;
+  s.attempted=true;
+  for(unsigned i=0;i<count;++i){
+    uint8_t v=0;
+    if(read(registers[i],v)){s.value[i]=v;s.valid|=uint16_t(1u<<i);}
+  }
+}
+}
+extern "C" bool tpk_pmic_claim();
+extern "C" void tpk_pmic_record(uint8_t reg,bool ok,uint8_t value);
+void tpk_pmic_report();
 extern "C" void tpk_boot_mark(uint32_t stage,uint32_t detail);
 extern "C" bool tpk_boot_early();
 void tpk_boot_begin();

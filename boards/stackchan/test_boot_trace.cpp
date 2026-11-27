@@ -18,4 +18,15 @@ int main(){
   a.seq=0xffffffffu;a.check=checksum(a);b=a;advance(b,SerialReady,0);assert(b.seq==0&&latest(a,b)==1);
   for(uint32_t i=1;i<=ExtI2cFail;++i){auto r=begin(nullptr,0);advance(r,static_cast<Stage>(i),i);assert(valid(r)&&seen(r,i));}
   auto unchanged=b;advance(b,static_cast<Stage>(0),0);assert(b.check==unchanged.check);
+  tpkpmic::Snapshot snapshot={};
+  unsigned calls=0;
+  tpkpmic::capture(snapshot,[&](uint8_t reg,uint8_t& value){
+    assert(reg==tpkpmic::registers[calls++]);
+    value=reg;return reg!=0x49;
+  });
+  assert(snapshot.attempted && calls==tpkpmic::count);
+  assert(tpkpmic::registers[0]==0x21 && snapshot.value[0]==0x21);
+  assert(snapshot.valid==uint16_t(((1u<<tpkpmic::count)-1u)&~(1u<<8)));
+  tpkpmic::capture(snapshot,[&](uint8_t,uint8_t&){++calls;return true;});
+  assert(calls==tpkpmic::count);
 }

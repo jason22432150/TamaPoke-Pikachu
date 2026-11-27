@@ -143,10 +143,24 @@ def trace_specs():
         }
         if(trace)tpk_boot_mark(tpktrace::ExtAfter,uint32_t(cancel));
 '''
+    # Capture after the existing AW9523 identity check and before GPIO/latch
+    # operations. Use the already-initialized I2C controller; no new bus init,
+    # retries, delays, IRQ clear, or PMIC register-value writes.
+    early=b'          if (chk_aw .has_value() && chk_aw .value() == 0x23)\n          {\n            auto result = lgfx::gpio::command(\n'
+    early_new=b'''          if (chk_aw .has_value() && chk_aw .value() == 0x23)
+          {
+            if(tpk_pmic_claim()){
+              for(uint8_t reg:tpkpmic::registers){
+                auto v=lgfx::i2c::readRegister8(i2c_port,axp_i2c_addr,reg,i2c_freq);
+                tpk_pmic_record(reg,v.has_value(),v.has_value()?v.value():0);
+              }
+            }
+            auto result = lgfx::gpio::command(
+'''
     inc=base.GUARD
     inc_new=sub(inc,b'#include "tpk_k151_boost_start.h"',b'#include "tpk_k151_boost_start.h"\n#include "tpk_k151_boot_trace.h"')
     return (tuple((a,guard(a,b)) for a,b in ((inc,inc_new),(base.GFX_NEW,gfx),
-                  (base.GFX_START,start),(direction,direction_new),(ldo,ldo_new),(light,light_new))),
+                  (base.GFX_START,start),(direction,direction_new),(ldo,ldo_new),(light,light_new),(early,early_new))),
             tuple((a,guard(a,b)) for a,b in ((inc,inc_new),(base.UNIFIED_NEW,uni),
                   (pmic_full,pmic_new),(ext_read,ext_read_new),(ext_write,ext_write_new),(ext,ext_new))))
 
@@ -165,7 +179,11 @@ def ensure(libraries,check=False):
         pending.append((path,fixed))
         for dest,data in ((path.with_name('tpk_k151_boost_start.h'),policy),
                           (path.with_name('tpk_k151_boot_trace.h'),trace)):
-            if dest.exists() and dest.read_bytes()!=data: raise ValueError(f"Unexpected header: {dest}")
+            if dest.exists() and dest.read_bytes()!=data:
+                # Accept only the exact previously audited B11n trace header on upgrade.
+                old_trace=(dest.name=='tpk_k151_boot_trace.h' and
+                    hashlib.sha256(dest.read_bytes()).hexdigest()=='0b2852ac7979c47185232e89d243f4a9b21843455fa1fdb09710c4263dc88c63')
+                if check or not old_trace: raise ValueError(f"Unexpected header: {dest}")
             if check and not dest.is_file(): raise ValueError(f"Missing header: {dest}")
             pending.append((dest,data))
     for path,data in pending:
