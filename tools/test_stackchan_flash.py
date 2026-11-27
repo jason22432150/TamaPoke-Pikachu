@@ -91,7 +91,14 @@ class FlashTests(unittest.TestCase):
             "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
             "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
         )
-        self.assertEqual(APPROVED_BUILDS,frozenset({fixed,landscape,interaction,fps,optimized}))
+        standalone=(
+            "e21c476b278544793f9ecd56ff770c0f30cae1f8",
+            "6de5b257f7d66b1662fd5db3eb836508675e89f575883c420842ceebf82696f1",
+            "b9d4470ee0c4ac7053a8b6ff388e1760db76bc51bbf8efbbd2b2f4f853e9a54a",
+            "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+            "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+        )
+        self.assertEqual(APPROVED_BUILDS,frozenset({fixed,landscape,interaction,fps,optimized,standalone}))
         self.assertEqual(CHECKPOINT_BUILDS,frozenset({approved}))
         names=("TamaPoke.ino.bootloader.bin","TamaPoke.ino.bin",
                "TamaPoke.ino.partitions.bin","ota_data_initial.bin")
@@ -100,7 +107,7 @@ class FlashTests(unittest.TestCase):
                 dict(name=n,sha256=h) for n,h in zip(names,t[1:])])
         with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
             require_approved(as_plan(approved))
-        for candidate in (fixed,landscape,interaction,fps,optimized):
+        for candidate in (fixed,landscape,interaction,fps,optimized,standalone):
             require_approved(as_plan(candidate))
             for i in range(len(candidate)):
                 tampered=list(candidate)
@@ -121,6 +128,12 @@ class FlashTests(unittest.TestCase):
             require_approved(as_plan((optimized[0],optimized[1],fps[2],*optimized[3:])))
         with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
             require_approved(as_plan((fps[0],optimized[1],*fps[2:])))
+        with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+            require_approved(as_plan((standalone[0],optimized[1],*standalone[2:])))
+        with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+            require_approved(as_plan((standalone[0],standalone[1],optimized[2],*standalone[3:])))
+        with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+            require_approved(as_plan((optimized[0],standalone[1],*optimized[2:])))
     def test_unapproved_never_opens_serial(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);bins=root/"bins";bins.mkdir()

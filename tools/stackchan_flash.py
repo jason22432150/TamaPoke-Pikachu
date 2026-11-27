@@ -28,6 +28,8 @@ from stackchan_deploy_review import plan, readback, checkpoints
 # Bounded comparison against B8, supervised ROM-only install; hardware pending.
 # B11: archived build 45861451180, fixed ELF audit 45864574356.
 # Bounded reference-function comparison to B10; supervised ROM-only install.
+# B11l: archived build 45931554248, fixed ELF audit 45933053881.
+# Bounded reference-function comparison to B11; supervised ROM-only install.
 # Retain the previously approved tuples for supervised recovery.
 APPROVED_BUILDS=frozenset({(
     "871e6d8851c6b7348bbf5a0d71a80affa10e1e32",
@@ -57,6 +59,12 @@ APPROVED_BUILDS=frozenset({(
     "0bb39e5292d712007612b248ac005dac1bfc558b",
     "eb607f98fd500ebaeb5c6da9649d98458e8f8601a5e6a2525c25e694c8cdfc91",
     "8ac9ac7aea76f77f0bfb21e6563b70abef424ee535b43f3ab169eb52c154e707",
+    "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+    "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+),(
+    "e21c476b278544793f9ecd56ff770c0f30cae1f8",
+    "6de5b257f7d66b1662fd5db3eb836508675e89f575883c420842ceebf82696f1",
+    "b9d4470ee0c4ac7053a8b6ff388e1760db76bc51bbf8efbbd2b2f4f853e9a54a",
     "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
     "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
 )})

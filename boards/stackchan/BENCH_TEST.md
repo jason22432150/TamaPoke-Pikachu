@@ -411,6 +411,29 @@ paused diagnosis, retained save, SD and exact binary review pending. B11k
 performance evidence may be collected on the new audited candidate; record
 source version explicitly.
 
+B11l CI 45931554248: all six jobs PASS. Exact source
+e21c476b278544793f9ecd56ff770c0f30cae1f8, paired artifact 15168714645,
+ZIP SHA256 22e962128a0fb46c376cf164d62cbc9a69e9fecb71aad995080663fa3bff98df.
+Fixed ELF audit 45933053881 PASS, artifact 15169552021, ZIP SHA256
+5ea7dd51cd0deb6ff5c364aed94f467b041ea4bd71e5cb8ee63e40888107ff89.
+All 11 pinned hashes pass; known references 7 boot / 10 app; extracted
+ranges 10 / 34. No known linked writer or explicit ROM writer reference.
+Compared emitted listings to B11 audit 45864574356: boot instruction
+listings match after location normalization; all 34 app range names match.
+33 executable ranges have matching instruction counts, with no unexpected
+instruction/operand differences after relocation normalization. 40 resolved
+RAM/flash literal relocations, including named helpers, data and log strings;
+MMIO targets and non-address immediates match in compared functions. One
+pre-function data/literal range differs (1481 vs 1483 decoded lines), not
+fully interpreted. SDK config, partition and OTA data hashes match B11.
+Bounded static comparison cannot prove all indirect paths, ROM behavior or
+protected/reserved bits. Only exact standalone tuple added to supervised
+ROM-only install allowlist; retain B11. Require whitelist CI PASS before
+installation. First boot explicitly pause countdown with DIAGNOSTIC MODE,
+verify paused before returning to ROM; if missed record game initialization.
+Do not claim pre-game checkpoint unless observed. B11 final post-game
+checkpoint still pending; compare B11 before to B11l preflight before write.
+
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
 - Optional: capture and verify two full factory reads using stackchan_backup.py. Store privately. Factory restoration is outside project scope.
