@@ -502,3 +502,17 @@ no servo/charging/eFuse/partition changes, no NVS diagnostic writes. Prefer
 small pinned dependency patch over full upgrade; exact artifact audit and
 battery cold-start/USB/unplug/SD/audio/head/RGB regression required. No power
 initialization code changed by this documentation update.
+
+### B11m bounded boost precharge candidate
+Patch exact M5GFX 0.2.26 and M5Unified 0.2.20 source blobs only, gated by
+BOARD_STACKCHAN in the full game compile. Clear high latch only when P1_7
+is still input before M5GFX direction setup; preserve all other output bits
+and never interrupt an already high driven rail. If original detection needs
+boost, precharge there; otherwise at Power.begin. Twenty bounded pulses with
+recovery intervals, then continuous high, modeled on reported K151 workaround.
+No retry or direct enable fallback on detected I2C failure; halt initialization.
+Existing downstream bus output/PMIC/charging policy unchanged. Not measured
+or certified on hardware: actual pulses depend on bus latency, and failing
+first pulse can still cut power. Require exact ELF audit and supervised cold
+boot checks, including no external accessories and normal battery protection.
+No new NVS diagnostic writes, no motor output, no partition or eFuse changes.

@@ -463,3 +463,10 @@ boot preference or new NVS key. The compile-only CoreProbe is unchanged.
 For supervised first boot select DIAGNOSTIC MODE within the countdown and
 verify Auto start paused before returning to ROM; if missed, record that game
 initialization occurred. No factory restore, motor, OTA or eFuse write.
+
+## B11m battery cold-start candidate
+The game build requires the pinned K151 boost patch in addition to the DMA
+patch. CI applies it with tools/patch_stackchan_boost.py; local game builds
+verify the patch before compiling. Only BOARD_STACKCHAN code is changed;
+no new NVS data or protection thresholds. Bounded precharge is experimental;
+CI cannot prove electrical behavior, do not install without exact audit.
