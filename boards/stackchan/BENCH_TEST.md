@@ -383,6 +383,19 @@ Require whitelist CI success before install; pre/write/first boot observable
 checkpoints and B11 interactive acceptance remain pending. Do not claim
 B10 final post-game eFuse comparison was performed; it remains unrecorded.
 
+Owner-reported hardware checkpoints (2026-11-27): B11 read-only probe
+passed, partition table read completed; B10 before versus B11 preflight
+before comparison reports observable-summary-unchanged, changed_fields=[],
+unreadable_before=0, unreadable_after=0. B10 final observable checkpoint
+PASS (owner report). B11 write-verified.json and after-boot overall and
+individual comparisons report observable-summary-unchanged, no changed
+fields and zero unreadable fields before/after. B11 supervised install and
+first-boot observable checkpoints PASS (owner report). Whitelist CI
+45869023259 all six jobs passed. Snapshot ordering and physical boot history
+remain operator evidence; no claim about protected/reserved bits. B11k
+performance, UI, battery wake, save/RTC and final post-game checkpoints
+remain pending. No new firmware required for these tests.
+
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
 - Optional: capture and verify two full factory reads using stackchan_backup.py. Store privately. Factory restoration is outside project scope.
