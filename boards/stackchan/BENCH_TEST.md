@@ -516,3 +516,33 @@ or certified on hardware: actual pulses depend on bus latency, and failing
 first pulse can still cut power. Require exact ELF audit and supervised cold
 boot checks, including no external accessories and normal battery protection.
 No new NVS diagnostic writes, no motor output, no partition or eFuse changes.
+
+### B11m fixed binary review and supervised bench install gate
+CI 45945886585: six jobs PASS. Exact source d830ac15cc1761aa421b33035ccfa0bb5f93fd1c,
+paired artifact 15175176944, ZIP SHA256
+ e9f6652c76b0ea2702067c48ffd3c2bc03f06d41a3f2419c9aa6f7f308f3ae56.
+ELF audit 45956353073 PASS, artifact 15178642838, ZIP SHA256
+ e94b3e03f8127e93fba794a5adecc0dbbbb500bfbe59b17c4f0afb835fb6dcce.
+All 11 pinned hashes match. Known eFuse references 7 boot / 10 app;
+extracted ranges 10 / 34. No known linked writer or explicit ROM writer
+reference. B11l comparison: normalized boot listings match; 33 app executable
+ranges match after relocation normalization, 16 resolved address relocations;
+one pre-function data range differs (1483 vs 1482 lines), not fully interpreted.
+Both actual boost startup loops, indirect ROM delay calls, error branches and
+both file-backed 80-byte recovery tables checked at fixed instruction sites.
+Optional ESP log marker absent, not used as proof of behavior. SDK config,
+partition and OTA initial hashes unchanged. Static checks cannot certify
+pulse width, current, actual startup, all computed paths or protected eFuses.
+Exact tuple only added for supervised ROM-only bench install after whitelist
+CI PASS. Record actual previously installed version; compare last verified
+installation before snapshot to new preflight, retain existing snapshots.
+USB first boot: pause at DIAGNOSTIC MODE before game init, confirm paused,
+then return to ROM for after-boot snapshot. If missed, record actual history.
+After checks, power off, insert SD, unplug USB/external accessories, observe
+one battery-only cold start; stop on white flash/shutdown, abnormal heat,
+reset, unintended motion or other power fault rather than repeatedly retry.
+If successful, test up to five normal cold starts, auto/manual/diag startup,
+USB cold start/unplug, save/SD/RTC, touch/audio/head/RGB, final read-only
+eFuse checkpoint. Do not intentionally deep-discharge or bypass protections.
+B11l installation evidence and B11k performance validation remain pending
+unless separately supplied; do not label them PASS from CI.
