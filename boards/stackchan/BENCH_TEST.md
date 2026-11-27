@@ -475,3 +475,30 @@ Do not deliberately discharge a lithium battery below safe limits to test shutdo
 Analyze the captured log with tools/stackchan_perf_report.py --minutes 60.
 Review all data-quality and memory-decline flags; repeat an identical workload
 before diagnosing a leak. A clean report cannot replace the checklist.
+
+
+## B11m battery-only cold-start blocker (owner report, 2026-11-27)
+USB cold start succeeds; unplugging USB after entering the game permits normal
+battery play; battery-only cold start produces a brief white backlight flash
+and no UI; displayed battery 80–100%. Treat as release blocker. Installed
+source commit and exact B11l installation checkpoints not supplied with this
+report. No evidence yet of actual failing boot stage or voltage transient.
+The application's BatMonitor requires >=30s boot grace, >=30s sustained low
+voltage and >=3 readings; immediate failure is inconsistent with that path.
+Pinned M5Unified 0.2.20 Power_Class.cpp:332–337 unconditionally asserts
+AW9523 P1_7 BOOST_EN during CoreS3/SE/StackChan Power.begin; M5Unified::_begin
+then calls setExtOutput(cfg.output_power), default true. Pinned M5GFX 0.2.26
+M5GFX.cpp:1500–1505 can assert BOOST_EN even earlier during board detection
+when SPI pullups are absent. Official StackChan reference commit
+28b9f0c8bd6acd81cb3c70f1a93c3e373b39d400 stackchan.cc:218–229 also asserts it
+in the AW9523 initializer. Independent analogous K151 report:
+https://zenn.dev/maruhana/articles/stackchan-battery-boot-debug
+reports success with boost precharge, not measurement on owner's unit.
+M5Unified 0.2.22 output-switch fixes do not remove unconditional startup
+BOOST_EN, so a dependency upgrade or output_power=false alone is insufficient
+as a verified solution. Investigate both earliest assertion sites and safe
+rail sequencing, preserve unrelated expander bits and hardware protections,
+no servo/charging/eFuse/partition changes, no NVS diagnostic writes. Prefer
+small pinned dependency patch over full upgrade; exact artifact audit and
+battery cold-start/USB/unplug/SD/audio/head/RGB regression required. No power
+initialization code changed by this documentation update.
