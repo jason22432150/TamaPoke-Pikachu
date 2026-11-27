@@ -174,7 +174,11 @@ def ensure(libraries,check=False):
             if original.count(new)==1: original=original.replace(new,old)
         b11m=base.patched(original,expected,replacements); fixed=b11m
         for old,new in diagnostic: fixed=sub(fixed,old,new)
-        if current not in (original,b11m,fixed): raise ValueError(f"Unexpected partial patch: {path}")
+        # Exact legacy B11n source may be upgraded; no partially patched input.
+        legacy_digest={'M5GFX':'4352bd7eff510119aac158812f1d8fe8eaf96fd1448ed461df678e2555c5a49d',
+                       'M5Unified':'1f3d328d290eedb973c05c371f473a6769c684a9eb271a88c28f0871a63be9f6'}[name]
+        if current not in (original,b11m,fixed) and hashlib.sha256(current).hexdigest()!=legacy_digest:
+            raise ValueError(f"Unexpected partial patch: {path}")
         if check and current!=fixed: raise ValueError(f"Missing diagnostic source patch: {path}")
         pending.append((path,fixed))
         for dest,data in ((path.with_name('tpk_k151_boost_start.h'),policy),
@@ -188,7 +192,7 @@ def ensure(libraries,check=False):
             pending.append((dest,data))
     for path,data in pending:
         if not check and (not path.exists() or path.read_bytes()!=data): path.write_bytes(data)
-        print(path.name,"B11n SHA-256",hashlib.sha256(data).hexdigest())
+        print(path.name,"B11o SHA-256",hashlib.sha256(data).hexdigest())
 
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('libraries',type=Path)

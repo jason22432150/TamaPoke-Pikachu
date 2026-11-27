@@ -68,12 +68,22 @@ struct Snapshot {
   uint16_t valid;
   uint8_t value[count];
 };
+inline bool claim(Snapshot& s){
+  if(s.attempted)return false;
+  s.attempted=true;return true;
+}
+inline void record(Snapshot& s,uint8_t reg,bool ok,uint8_t value){
+  if(!s.attempted||!ok)return;
+  for(unsigned i=0;i<count;++i){
+    if(registers[i]==reg){s.value[i]=value;s.valid|=uint16_t(1u<<i);return;}
+  }
+}
 template<class Read> void capture(Snapshot& s,Read read){
-  if(s.attempted)return;
-  s.attempted=true;
+  if(!claim(s))return;
   for(unsigned i=0;i<count;++i){
     uint8_t v=0;
-    if(read(registers[i],v)){s.value[i]=v;s.valid|=uint16_t(1u<<i);}
+    const bool ok=read(registers[i],v);
+    record(s,registers[i],ok,v);
   }
 }
 }

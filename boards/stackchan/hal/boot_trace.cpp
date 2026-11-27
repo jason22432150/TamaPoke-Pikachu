@@ -38,19 +38,10 @@ static void printRecord(const char* label,const Record& r){
 }
 extern "C" bool tpk_boot_early(){return started&&!earlyDone;}
 extern "C" bool tpk_pmic_claim(){
-  if(!tpk_boot_early()||pmicSnapshot.attempted)return false;
-  pmicSnapshot.attempted=true;
-  return true;
+  return tpk_boot_early() && tpkpmic::claim(pmicSnapshot);
 }
 extern "C" void tpk_pmic_record(uint8_t reg,bool ok,uint8_t value){
-  if(!pmicSnapshot.attempted||!tpk_boot_early()||!ok)return;
-  for(unsigned i=0;i<tpkpmic::count;++i){
-    if(tpkpmic::registers[i]==reg){
-      pmicSnapshot.value[i]=value;
-      pmicSnapshot.valid|=uint16_t(1u<<i);
-      return;
-    }
-  }
+  if(tpk_boot_early())tpkpmic::record(pmicSnapshot,reg,ok,value);
 }
 void tpk_pmic_report(){
   Serial.printf("PMIC SNAPSHOT schema=B11O1 source=gfx-before-power-writes attempted=%u valid=0x%04x\n",
