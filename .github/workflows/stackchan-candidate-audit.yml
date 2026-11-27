@@ -19,41 +19,41 @@ jobs:
         with:
           name: stackchan-K151-game-compile-evidence-NOT-FOR-FLASH
           github-token: ${{ github.token }}
-          run-id: 45945886585
+          run-id: 45998796326
           path: /tmp/k151-review/app
       - uses: actions/download-artifact@v4
         with:
           name: stackchan-source-bootloader-NOT-FOR-FLASH
           github-token: ${{ github.token }}
-          run-id: 45945886585
+          run-id: 45998796326
           path: /tmp/k151-review/boot
       - uses: actions/download-artifact@v4
         with:
           name: stackchan-alpha-0.1.0-source-bootloader-NOT-FOR-FLASH
           github-token: ${{ github.token }}
-          run-id: 45945886585
+          run-id: 45998796326
           path: /tmp/k151-review/paired
       - name: Verify fixed source and artifact identity
         shell: bash
         run: |
           cd /tmp/k151-review
           sha256sum -c <<'HASHES'
-          c8799332582aacef0c856f481afb3b6c158f9ea4c8762cf9a664d4640bcfae72  boot/bootloader.elf
-          89a958cdeb364677fb217072750fe3b6c2c7ca00e6bf8d5fb6398ff2696316d8  boot/bootloader.bin
+          4380ce7b750b3324e5efa6ae53caefbf8721e4b3e36be497b7a5d3b989336cc9  boot/bootloader.elf
+          225c3addcce44aea056a1f37c2497cf69c157f0c5ab95c0409bd6a9e253fae19  boot/bootloader.bin
           796cd0b9490b6ea13b57a28eadd10d2b272f88ac8924eb2eb1ff1eebfa380b58  boot/sdkconfig
           58fe61ac2b2f77996a5c6acd7cc79dcb4c4138e39d91b7190ef2d4a90a6c16a4  boot/bootloader-sdkconfig.h
-          6ee964f685c6d6b824bf3268cb9e801c2b29200874d4071ae7d88e01fd5173f4  app/TamaPoke.ino.elf
-          18c3213af1bd2edb0753d68a7c74c1da86cd0ef9ce860745d04d84146bcee9e4  app/TamaPoke.ino.map
+          3218388a3c6b26ae5551b6c2a0ac41fc012741ed0b873cc974d505cc46e9c966  app/TamaPoke.ino.elf
+          12cea4019a83f9082b96fdd9510a0c3d65ada961e32acf8bd7e5e2ff67941b04  app/TamaPoke.ino.map
           a635f5a6c6f64e1fbc2d7de36d58269d145f70e272220205445dd8b45c9f2035  app/sdkconfig
-          4a8a63d4166d8d058389cc469519c6f0ccae315a6939cadaae64e6c7f0532ea5  paired/TamaPoke.ino.bin
-          89a958cdeb364677fb217072750fe3b6c2c7ca00e6bf8d5fb6398ff2696316d8  paired/TamaPoke.ino.bootloader.bin
+          d7eb8ad05252e5d7be92ae62d2150c0f3abaefa82371c39b6afd523b6cc2f4ad  paired/TamaPoke.ino.bin
+          225c3addcce44aea056a1f37c2497cf69c157f0c5ab95c0409bd6a9e253fae19  paired/TamaPoke.ino.bootloader.bin
           48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b  paired/TamaPoke.ino.partitions.bin
           7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f  paired/ota_data_initial.bin
           HASHES
           python3 - <<'PY'
           import json
           from pathlib import Path
-          commit="d830ac15cc1761aa421b33035ccfa0bb5f93fd1c"
+          commit="6d1b2183e6717bcde9b905178826a0f06d6bd584"
           for p in ("boot/manifest.json","app/boot-evidence.json","paired/manifest.json"):
               d=json.loads(Path(p).read_text())
               if d["source_commit"]!=commit or d["flash_authorized"] is not False:
@@ -80,7 +80,7 @@ jobs:
           inputs=(
               ("boot", "boot/manifest.json","bootloader_efuse_symbols"),
               ("app", "app/boot-evidence.json","application_efuse_symbols"))
-          result={"source_commit":"d830ac15cc1761aa421b33035ccfa0bb5f93fd1c",
+          result={"source_commit":"6d1b2183e6717bcde9b905178826a0f06d6bd584",
                   "flash_authorized":False,"safety_attested":False,"images":{}}
           for name,source,key in inputs:
               evidence=json.loads(Path(source).read_text())[key]
@@ -118,138 +118,113 @@ jobs:
           print(json.dumps(result,indent=2))
           Path("report/audit.json").write_text(json.dumps(result,indent=2)+"\n")
           PY
-      - name: Inspect linked K151 boost startup paths
+      - name: Inspect B11n retained memory and linked diagnostic paths
         shell: bash
         run: |
           set -euo pipefail
           source "$IDF_PATH/export.sh"
           cd /tmp/k151-review
-          xtensa-esp32s3-elf-nm -C --defined-only app/TamaPoke.ino.elf > report/app.demangled-symbols.txt
+          xtensa-esp32s3-elf-readelf -W -S -s -l app/TamaPoke.ino.elf > report/app.elf-layout.txt
+          xtensa-esp32s3-elf-nm -C -S --defined-only app/TamaPoke.ino.elf > report/app.demangled-symbols.txt
           python3 - <<'PY'
           import json,re,struct
           from pathlib import Path
           elf=Path("app/TamaPoke.ino.elf").read_bytes()
           image=Path("paired/TamaPoke.ino.bin").read_bytes()
-          marker=b"K151 boost init I2C failed; startup stopped"
-          # ESP_LOGE may be compiled out; record marker presence but rely
-          # on linked startup instructions and the actual recovery table.
-          print("Optional log marker:",marker in elf,marker in image)
-          names=Path("report/app.demangled-symbols.txt").read_text().splitlines()
-          for label in ("M5GFX::autodetect(", "Power_Class::begin("):
-              matches=[s for s in names if label in s]
-              if not matches:raise SystemExit("linked startup symbol missing: "+label)
-              print(label, *matches[:12], sep="\n")
-          # Retain entire startup and any separately linked policy functions.
-          # Compiler may inline templates, so lack of a named template alone
-          # is not treated as proof of missing implementation.
-          blocks=[];label="";body=[]
+          if elf[:6]!=b"\x7fELF\x01\x01":raise SystemExit("unexpected ELF format")
+          shoff=struct.unpack_from("<I",elf,32)[0]
+          shentsize,shnum,shstrndx=struct.unpack_from("<HHH",elf,46)
+          sections=[struct.unpack_from("<10I",elf,shoff+i*shentsize) for i in range(shnum)]
+          def section_bytes(s):return elf[s[4]:s[4]+s[5]]
+          strings=section_bytes(sections[shstrndx])
+          def cstr(data,i):return data[i:data.index(b"\0",i)].decode(errors="replace")
+          section_names=[cstr(strings,s[0]) for s in sections]
+          slots=[]
+          for section in sections:
+              if section[1]!=2:continue # SHT_SYMTAB
+              strtab=section_bytes(sections[section[6]])
+              for off in range(section[4],section[4]+section[5],section[9]):
+                  name,value,size,info,other,ndx=struct.unpack_from("<IIIBBH",elf,off)
+                  label=cstr(strtab,name)
+                  if "slotsE" in label and size==88 and ndx<len(sections):
+                      slots.append(dict(symbol=label,address=hex(value),bytes=size,
+                                        section=section_names[ndx],section_type=sections[ndx][1],
+                                        flags=sections[ndx][2]))
+          if len(slots)!=1 or slots[0]["section"]!=".rtc_noinit" or slots[0]["section_type"]!=8:
+              raise SystemExit("RTC trace slots not verified in NOBITS .rtc_noinit: "+str(slots))
+          # NOBITS is a placement check, not proof of retention after reset.
+          print("RTC SLOTS",json.dumps(slots))
+          dis=Path("report/app.disassembly.txt").read_text()
+          blocks={};label=None;body=[]
           def finish():
-              if re.search(r"M5GFX10autodetect|Power_Class5begin|tpkboost",label):
-                  blocks.append((label,body[:]))
-          for line in Path("report/app.disassembly.txt").read_text().splitlines():
-              if re.match(r"^\s*[0-9a-fA-F]+ <.+>:$",line):
-                  finish();label=line;body=[]
-              else:body.append(line)
+              if label is not None:blocks[label]=body[:]
+          for line in dis.splitlines():
+              m=re.match(r"^\s*[0-9a-fA-F]+ <(.+)>:$",line)
+              if m:finish();label=m[1];body=[]
+              elif label is not None:body.append(line)
           finish()
-          for name in ("M5GFX10autodetect","Power_Class5begin"):
-              if not any(name in label for label,_ in blocks):
-                  raise SystemExit("startup disassembly range missing: "+name)
-          Path("report/app.boost-startup-functions.txt").write_text(
-              "\n\n".join(label+"\n"+"\n".join(lines) for label,lines in blocks)+"\n")
-          for label,lines in blocks:
-              print("BOOST RANGE",label,"lines",len(lines))
-              relevant=[line for line in lines if re.search(
-                  r"tpkboost|delayMicroseconds|writeRegister8|readRegister8|bitOn|bitOff",line)]
-              print("\n".join(relevant[:100]))
+          families={
+              "setup":r"^_Z5setupv",
+              "hal":r"StackChanHAL",
+              "gfx":r"M5GFX10autodetect",
+              "light":r"Light_M5StackCoreS3",
+              "unified":r"Power_Class5begin",
+              "ext":r"core_s3_output|Power_Class12setExtOutput",
+              "trace":r"tpk_boot_|tpktrace|GLOBAL__N_1.*persist",
+              "menu":r"stackBootWait|stackBootMenu",
+          }
+          result={}
+          all_ranges={}
+          for family,pattern in families.items():
+              selected={k:v for k,v in blocks.items() if re.search(pattern,k)}
+              all_ranges.update(selected)
+              calls=[(k,line) for k,v in selected.items() for line in v
+                     if re.search(r"\bcall(?:0|4|8|12)\b.*<[^>]*tpk_boot_mark",line)]
+              result[family]={"ranges":len(selected),"direct_marker_calls":len(calls)}
+              print("TRACE FAMILY",family,result[family])
+              for k,line in calls:print(k,line)
+          for family in ("setup","gfx","light","unified","ext","trace"):
+              if not result[family]["ranges"]:
+                  raise SystemExit("missing linked family: "+family)
+          # HAL/menu may be inlined into setup; ext output may be outlined.
+          for family in ("gfx","light","unified","ext"):
+              if not result[family]["direct_marker_calls"]:
+                  raise SystemExit("missing direct trace evidence in "+family)
+          mark_ranges=[v for k,v in blocks.items() if k.startswith("tpk_boot_mark")]
+          if not mark_ranges:raise SystemExit("missing marker implementation")
+          # Review the marker implementation and any outlined persistence
+          # helpers, including RTC stores, barriers and all linked calls.
+          Path("report/app.boottrace-functions.txt").write_text(
+              "\n\n".join(k+"\n"+"\n".join(v) for k,v in all_ranges.items())+"\n")
+          print("BEGIN TRACE IMPLEMENTATION")
+          for k,v in all_ranges.items():
+              if re.search(r"tpk_boot_mark|GLOBAL__N_1.*persist",k):print(k+"\n"+"\n".join(v))
+          print("END TRACE IMPLEMENTATION")
           recovery=struct.pack("<20I",30000,25000,20000,16000,13000,10000,8000,6000,
                                5000,4000,3000,2500,2000,1500,1200,1000,800,600,400,300)
-          report=dict(marker_in_elf=marker in elf,marker_in_app=marker in image,
-                      recovery_table_in_elf=recovery in elf,
-                      recovery_table_in_app=recovery in image,
-                      extracted_ranges=len(blocks),electrical_safety_attested=False,
-                      flash_authorized=False)
-          print(json.dumps(report,indent=2))
-          Path("report/boost-audit.json").write_text(json.dumps(report,indent=2)+"\n")
-          if not report["recovery_table_in_elf"] or not report["recovery_table_in_app"]:
-              raise SystemExit("Exact recovery table not located; inspect actual instructions")
-          # This workflow pins one exact ELF. Verify reviewed instruction sites
-          # rather than a broad direct-call regex: ROM delays use l32r/callx8.
-          disassembly=Path("report/app.disassembly.txt").read_text()
-          ins={}
-          for line in disassembly.splitlines():
-              m=re.match(r"^\s*([0-9a-f]+):\s*(.*)$",line)
-              if m:ins[int(m[1],16)]=m[2]
-          def expect(addr,pattern):
-              if not re.search(pattern,ins.get(addr,"")):
-                  raise SystemExit(f"Reviewed instruction differs at {addr:08x}: {ins.get(addr)}")
-          # Power_Class::begin K151 branch: DIR/OUT reads, bit test, exact
-          # 80-byte recovery table copy, on/off writes, loop and final readback.
-          # M5GFX autodetect: prepare before direction setup, early path loop.
-          for addr,pattern in (
-              (0x420159f0,r"movi\.n\s+a12,\s*5$"),
-              (0x420159f6,r"call8.*I2C_Class12readRegister"),
-              (0x42015a0a,r"call8.*I2C_Class12readRegister"),
-              (0x42015a13,r"bbsi.*42015a89"),
-              (0x42015a1f,r"3c12630c"),
-              (0x42015a25,r"movi\.n\s+a12,\s*80$"),
-              (0x42015a4f,r"call8.*I2C_Class14writeRegister8"),
-              (0x42015a54,r"c350"),
-              (0x42015a72,r"call8.*I2C_Class12readRegister"),
-              (0x42015a83,r"bne.*42015a89"),
-              (0x42015a8f,r"j\s+42015a89"),
-              (0x42015ba8,r"call8.*I2C_Class14writeRegister8"),
-              (0x42015bab,r"beqz.*42015a89"),
-              (0x42015bae,r"movi\s+a10,\s*150$"),
-              (0x42015bc4,r"call8.*I2C_Class14writeRegister8"),
-              (0x42015bc7,r"beqz.*42015a89"),
-              (0x42015bcc,r"addi\.n\s+a6,\s*a6,\s*4$"),
-              (0x42015bd4,r"j\s+42015a31"),
-              (0x4201ad84,r"call8.*M5GFX10autodetect"),
-              (0x4201adb4,r"call8.*M5GFX10autodetect"),
-              (0x4201add4,r"beqz.*4201ade4"),
-              (0x4201adf3,r"movi\.n\s+a13,\s*3$"),
-              (0x4201ae40,r"call8.*i2c14writeRegister8"),
-              (0x4201aeb8,r"or\s+a1,\s*a1,\s*a1"),
-              (0x4201aef0,r"3c12865c"),
-              (0x4201aef6,r"movi\.n\s+a12,\s*80$"),
-              (0x4201af19,r"call8.*M5GFX10autodetect"),
-              (0x4201af1f,r"c350"),
-              (0x4201af43,r"beq.*4201af49"),
-              (0x4201b08f,r"call8.*M5GFX10autodetect"),
-              (0x4201b092,r"beqz.*4201b0b8"),
-              (0x4201b094,r"movi\s+a10,\s*150$"),
-              (0x4201b0a2,r"call8.*M5GFX10autodetect"),
-              (0x4201b0a5,r"beqz.*4201b0b8"),
-              (0x4201b0ab,r"addi\.n\s+a8,\s*a8,\s*4$"),
-              (0x4201b0b5,r"j\s+4201af0a"),
-              (0x4201b0c1,r"j\s+4201b0b8")):
-              expect(addr,pattern)
-          for load,call in ((0x42015a59,0x42015a5c),(0x42015bb1,0x42015bb4),
-                            (0x42015bce,0x42015bd1),(0x4201af22,0x4201af25),
-                            (0x4201b097,0x4201b09a),(0x4201b0af,0x4201b0b2)):
-              expect(load,r"l32r\s+a8,.*40000600 <esp_rom_delay_us>")
-              expect(call,r"callx8\s+a8$")
-          # Resolve both actual virtual addresses to file-backed PT_LOAD bytes
-          # (not merely finding an unrelated byte sequence elsewhere in ELF).
-          if elf[:6]!=b"\x7fELF\x01\x01":
-              raise SystemExit("Unexpected ELF class/endianness")
           phoff=struct.unpack_from("<I",elf,28)[0]
           entsize,count=struct.unpack_from("<HH",elf,42)
-          headers=[struct.unpack_from("<8I",elf,phoff+i*entsize) for i in range(count)]
-          for addr in (0x3c12630c,0x3c12865c):
-              ranges=[elf[o+addr-v:o+addr-v+80] for t,o,v,p,fs,ms,fl,al in headers
-                      if t==1 and v<=addr and addr+80<=v+fs]
-              if len(ranges)!=1 or ranges[0]!=recovery:
-                  raise SystemExit(f"Recovery table mismatch at {addr:08x}")
-          report["reviewed_instruction_sites_verified"]=True
-          report["both_file_backed_recovery_tables_verified"]=True
-          Path("report/boost-audit.json").write_text(json.dumps(report,indent=2)+"\n")
-          print("Both reviewed startup loops and their exact recovery tables verified")
+          tables=[]
+          for i in range(count):
+              t,o,v,p,fs,ms,fl,al=struct.unpack_from("<8I",elf,phoff+i*entsize)
+              if t!=1:continue
+              data=elf[o:o+fs];start=0
+              while True:
+                  j=data.find(recovery,start)
+                  if j<0:break
+                  tables.append(hex(v+j));start=j+1
+          if not tables or recovery not in image:
+              raise SystemExit("missing recovery table in loadable ELF or image")
+          report=dict(rtc_slots=slots,families=result,recovery_tables=tables,
+                      retention_attested=False,electrical_safety_attested=False,
+                      flash_authorized=False,manual_control_flow_review_pending=True)
+          Path("report/boottrace-audit.json").write_text(json.dumps(report,indent=2)+"\n")
+          print(json.dumps(report,indent=2))
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stackchan-d830ac1-exact-ELF-disassembly-NOT-FOR-FLASH
+          name: stackchan-6d1b218-exact-ELF-disassembly-NOT-FOR-FLASH
           path: /tmp/k151-review/report/
           if-no-files-found: error
           retention-days: 14
