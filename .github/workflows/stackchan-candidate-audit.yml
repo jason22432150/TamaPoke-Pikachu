@@ -172,13 +172,79 @@ jobs:
           Path("report/boost-audit.json").write_text(json.dumps(report,indent=2)+"\n")
           if not report["recovery_table_in_elf"] or not report["recovery_table_in_app"]:
               raise SystemExit("Exact recovery table not located; inspect actual instructions")
-          # Require real startup call evidence, including outlined templates.
-          # Full ranges are retained for manual control-flow review.
-          for name in ("M5GFX10autodetect","Power_Class5begin"):
-              related="\n".join("\n".join(lines) for label,lines in blocks if name in label)
-              if not re.search(r"call(?:0|4|8|12)\b.*(?:tpkboost|delayMicroseconds|ets_delay_us|esp_rom_delay_us)",related):
-                  raise SystemExit("No linked precharge/delay call evidence for "+name)
-          print("Both startup ranges have precharge/delay call evidence; manual review still required")
+          # This workflow pins one exact ELF. Verify reviewed instruction sites
+          # rather than a broad direct-call regex: ROM delays use l32r/callx8.
+          disassembly=Path("report/app.disassembly.txt").read_text()
+          ins={}
+          for line in disassembly.splitlines():
+              m=re.match(r"^\s*([0-9a-f]+):\s*(.*)$",line)
+              if m:ins[int(m[1],16)]=m[2]
+          def expect(addr,pattern):
+              if not re.search(pattern,ins.get(addr,"")):
+                  raise SystemExit(f"Reviewed instruction differs at {addr:08x}: {ins.get(addr)}")
+          # Power_Class::begin K151 branch: DIR/OUT reads, bit test, exact
+          # 80-byte recovery table copy, on/off writes, loop and final readback.
+          # M5GFX autodetect: prepare before direction setup, early path loop.
+          for addr,pattern in (
+              (0x420159f0,r"movi\.n\s+a12,\s*5$"),
+              (0x420159f6,r"call8.*I2C_Class12readRegister"),
+              (0x42015a0a,r"call8.*I2C_Class12readRegister"),
+              (0x42015a13,r"bbsi.*42015a89"),
+              (0x42015a1f,r"3c12630c"),
+              (0x42015a25,r"movi\.n\s+a12,\s*80$"),
+              (0x42015a4f,r"call8.*I2C_Class14writeRegister8"),
+              (0x42015a54,r"c350"),
+              (0x42015a72,r"call8.*I2C_Class12readRegister"),
+              (0x42015a83,r"bne.*42015a89"),
+              (0x42015a8f,r"j\s+42015a89"),
+              (0x42015ba8,r"call8.*I2C_Class14writeRegister8"),
+              (0x42015bab,r"beqz.*42015a89"),
+              (0x42015bae,r"movi\s+a10,\s*150$"),
+              (0x42015bc4,r"call8.*I2C_Class14writeRegister8"),
+              (0x42015bc7,r"beqz.*42015a89"),
+              (0x42015bcc,r"addi\.n\s+a6,\s*a6,\s*4$"),
+              (0x42015bd4,r"j\s+42015a31"),
+              (0x4201ad84,r"call8.*M5GFX10autodetect"),
+              (0x4201adb4,r"call8.*M5GFX10autodetect"),
+              (0x4201add4,r"beqz.*4201ade4"),
+              (0x4201adf3,r"movi\.n\s+a13,\s*3$"),
+              (0x4201ae40,r"call8.*i2c14writeRegister8"),
+              (0x4201aeb8,r"or\s+a1,\s*a1,\s*a1"),
+              (0x4201aef0,r"3c12865c"),
+              (0x4201aef6,r"movi\.n\s+a12,\s*80$"),
+              (0x4201af19,r"call8.*M5GFX10autodetect"),
+              (0x4201af1f,r"c350"),
+              (0x4201af43,r"beq.*4201af49"),
+              (0x4201b08f,r"call8.*M5GFX10autodetect"),
+              (0x4201b092,r"beqz.*4201b0b8"),
+              (0x4201b094,r"movi\s+a10,\s*150$"),
+              (0x4201b0a2,r"call8.*M5GFX10autodetect"),
+              (0x4201b0a5,r"beqz.*4201b0b8"),
+              (0x4201b0ab,r"addi\.n\s+a8,\s*a8,\s*4$"),
+              (0x4201b0b5,r"j\s+4201af0a"),
+              (0x4201b0c1,r"j\s+4201b0b8")):
+              expect(addr,pattern)
+          for load,call in ((0x42015a59,0x42015a5c),(0x42015bb1,0x42015bb4),
+                            (0x42015bce,0x42015bd1),(0x4201af22,0x4201af25),
+                            (0x4201b097,0x4201b09a),(0x4201b0af,0x4201b0b2)):
+              expect(load,r"l32r\s+a8,.*40000600 <esp_rom_delay_us>")
+              expect(call,r"callx8\s+a8$")
+          # Resolve both actual virtual addresses to file-backed PT_LOAD bytes
+          # (not merely finding an unrelated byte sequence elsewhere in ELF).
+          if elf[:6]!=b"\x7fELF\x01\x01":
+              raise SystemExit("Unexpected ELF class/endianness")
+          phoff=struct.unpack_from("<I",elf,28)[0]
+          entsize,count=struct.unpack_from("<HH",elf,42)
+          headers=[struct.unpack_from("<8I",elf,phoff+i*entsize) for i in range(count)]
+          for addr in (0x3c12630c,0x3c12865c):
+              ranges=[elf[o+addr-v:o+addr-v+80] for t,o,v,p,fs,ms,fl,al in headers
+                      if t==1 and v<=addr and addr+80<=v+fs]
+              if len(ranges)!=1 or ranges[0]!=recovery:
+                  raise SystemExit(f"Recovery table mismatch at {addr:08x}")
+          report["reviewed_instruction_sites_verified"]=True
+          report["both_file_backed_recovery_tables_verified"]=True
+          Path("report/boost-audit.json").write_text(json.dumps(report,indent=2)+"\n")
+          print("Both reviewed startup loops and their exact recovery tables verified")
           PY
       - uses: actions/upload-artifact@v4
         if: always()
