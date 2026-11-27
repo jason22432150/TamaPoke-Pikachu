@@ -678,3 +678,20 @@ or serial open can reset CPU and replace prior; absence/stale prior after
 power loss is inconclusive. If retention cannot identify the failed attempt,
 investigate single-stage isolation or qualified independently powered capture;
 do not repeat B11m or alter charging/protection/boost settings speculatively.
+
+### B11n2 battery-only cold start — FAIL (owner report, 2026-11-27)
+Owner reports battery-only boot still fails with the same symptom as B11m
+(brief white screen then no response). No new raw trace, power waveform,
+post-warm/final eFuse snapshot, exact operation sequence or handover result
+supplied with this report. Do not infer whether RTC retained the failed
+attempt, where execution stopped, or whether the entire board lost power.
+Stop additional battery-only attempts and do not reinstall B11m/B11n2.
+If already safely USB powered, capture the first available BOOTTRACE? without
+intentional reboot (even if menu has exited); report any reset or reconnection
+already performed. If still unpowered and no abnormal heat, odor or swelling,
+one supervised USB recovery only, no further cold-start attempt. Preserve
+prior/current raw data and then obtain a fresh read-only eFuse checkpoint.
+If RTC evidence is absent/stale or cannot be attributed, prioritize isolated
+startup boundaries before M5.begin, PMIC-before-AW9523/backlight ordering,
+and qualified independent capture. Do not change protection or blindly
+copy PMIC register values. No firmware or allowlist changes in this record.
