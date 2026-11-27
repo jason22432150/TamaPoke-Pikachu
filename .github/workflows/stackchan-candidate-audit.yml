@@ -131,8 +131,9 @@ jobs:
           elf=Path("app/TamaPoke.ino.elf").read_bytes()
           image=Path("paired/TamaPoke.ino.bin").read_bytes()
           marker=b"K151 boost init I2C failed; startup stopped"
-          if marker not in elf or marker not in image:
-              raise SystemExit("K151 boost failure marker missing in ELF or app")
+          # ESP_LOGE may be compiled out; record marker presence but rely
+          # on linked startup instructions and the actual recovery table.
+          print("Optional log marker:",marker in elf,marker in image)
           names=Path("report/app.demangled-symbols.txt").read_text().splitlines()
           for label in ("M5GFX::autodetect(", "Power_Class::begin("):
               matches=[s for s in names if label in s]
@@ -162,15 +163,25 @@ jobs:
               print("\n".join(relevant[:100]))
           recovery=struct.pack("<20I",30000,25000,20000,16000,13000,10000,8000,6000,
                                5000,4000,3000,2500,2000,1500,1200,1000,800,600,400,300)
-          report=dict(marker_in_elf=True,marker_in_app=True,
+          report=dict(marker_in_elf=marker in elf,marker_in_app=marker in image,
                       recovery_table_in_elf=recovery in elf,
                       recovery_table_in_app=recovery in image,
                       extracted_ranges=len(blocks),electrical_safety_attested=False,
                       flash_authorized=False)
           print(json.dumps(report,indent=2))
           Path("report/boost-audit.json").write_text(json.dumps(report,indent=2)+"\n")
+          if not report["recovery_table_in_elf"] or not report["recovery_table_in_app"]:
+              raise SystemExit("Exact recovery table not located; inspect actual instructions")
+          # Require real startup call evidence, including outlined templates.
+          # Full ranges are retained for manual control-flow review.
+          for name in ("M5GFX10autodetect","Power_Class5begin"):
+              related="\n".join("\n".join(lines) for label,lines in blocks if name in label)
+              if not re.search(r"call(?:0|4|8|12)\b.*(?:tpkboost|delayMicroseconds|ets_delay_us|esp_rom_delay_us)",related):
+                  raise SystemExit("No linked precharge/delay call evidence for "+name)
+          print("Both startup ranges have precharge/delay call evidence; manual review still required")
           PY
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: stackchan-d830ac1-exact-ELF-disassembly-NOT-FOR-FLASH
           path: /tmp/k151-review/report/
