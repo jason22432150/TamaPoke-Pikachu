@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: make -C TamaPoke/test CXX=g++ ${{ matrix.target }}
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_coordinates.cpp -o /tmp/coordinates && /tmp/coordinates
+      - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_boot_start_policy.cpp -o /tmp/boot_start && /tmp/boot_start
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_body_policy.cpp -o /tmp/body_policy && /tmp/body_policy
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_serial_head_policy.cpp -o /tmp/serial_head && /tmp/serial_head
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_motion_policy.cpp -o /tmp/motion_policy && /tmp/motion_policy

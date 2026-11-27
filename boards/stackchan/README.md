@@ -33,7 +33,7 @@ behavior keeps its tamapoke namespace; the core adds a checked alternate namespa
 The BOARD_STACKCHAN target compiles the original TamaPoke sketch, sprites, CJK
 fonts, menus, animations and game logic, preserving logical 466x466 coordinates.
 The Arduino_GFX RAM canvas is transmitted through M5GFX to a 240x240 viewport.
-It uses the dedicated tpk-k151-game namespace, opt-in START and SDWRITE ON,
+It uses the dedicated tpk-k151-game namespace, a startup menu (B11l), and opt-in SDWRITE ON,
 SPI SD with no auto-format, M5Unified RTC/power/speaker APIs. The Waveshare
 sleep GPIO path is excluded. Runtime and all interactions remain unverified;
 no full game artifact is published. Motor/RGB and native widescreen redesign
@@ -450,3 +450,16 @@ K151 only: on battery, no pending input/serial/audio, calm loops yield up to
 4ms and off loops up to 5ms, bounded by the next legacy frame deadline.
 USB/charging, active UI and minigames retain 1ms. No MCU sleep or clock
 scaling. Actual power savings and wake behavior need hardware validation.
+
+## B11l standalone startup (candidate)
+After the existing hardware and NVS guard checks, the full game displays a
+320x240 boot menu and starts after 3 seconds without Serial. Touch START GAME
+then release to start immediately, or touch DIAGNOSTIC MODE to pause indefinitely.
+Any contact during countdown pauses auto-start; held-at-entry and drag-out
+contacts cannot select START. Serial START remains supported; DIAG or
+BODY CALIBRATION pauses auto-start. Diagnostic mode retains the pre-game
+namespace/SD boundary; touch START or Serial START exits it. No persistent
+boot preference or new NVS key. The compile-only CoreProbe is unchanged.
+For supervised first boot select DIAGNOSTIC MODE within the countdown and
+verify Auto start paused before returning to ROM; if missed, record that game
+initialization occurred. No factory restore, motor, OTA or eFuse write.

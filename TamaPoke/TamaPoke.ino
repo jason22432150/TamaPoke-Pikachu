@@ -28,6 +28,7 @@
 #include "nvs_guard.h"
 #include "serial_line_policy.h"
 #include "head_touch.h"
+#include "boot_start_policy.h"
 #else
 #include "TouchDrvCSTXXX.hpp"
 #endif
@@ -401,6 +402,61 @@ void updateScreenLock(uint32_t now) {
 #endif
 }
 
+#if BOARD_STACKCHAN
+static void stackBootMenu(){
+  auto& d=M5.Display;
+  d.fillScreen(0x0000);
+  d.setFont(&m5gfx::fonts::Font0);d.setTextSize(2);d.setTextDatum(uint8_t(0));
+  d.setTextColor(0xFFFF,0x0000);
+  d.drawString("TamaPoke K151",20,10);
+  d.drawString("Experimental game",20,34);
+  const auto a=tpkboot::START,b=tpkboot::DIAG;
+  d.fillRoundRect(a.x,a.y,a.w,a.h,8,0x340A);
+  d.setTextColor(0xFFFF,0x340A);d.drawString("START GAME",100,84);
+  d.fillRoundRect(b.x,b.y,b.w,b.h,8,0x4208);
+  d.setTextColor(0xFFFF,0x4208);d.drawString("DIAGNOSTIC MODE",70,148);
+}
+static void stackBootStatus(bool automatic,uint32_t seconds){
+  auto& d=M5.Display;
+  d.fillRect(0,190,320,50,0x0000);
+  d.setTextSize(2);d.setTextColor(0xFFFF,0x0000);
+  if(automatic){
+    char msg[32];snprintf(msg,sizeof(msg),"Auto start in %lus",(unsigned long)seconds);
+    d.drawString(msg,20,194);
+  }else d.drawString("Auto start paused",20,194);
+  d.setTextSize(1);d.drawString("Serial: START / DIAG / BODY CALIBRATION",20,221);
+}
+static void stackBootWait(){
+  stackBootMenu();
+  tpkboot::Gate gate(millis());
+  int shown=-2;
+  for(;;){
+    stackBoard.update();
+    String s;
+    auto command=tpkboot::Command::None;
+    if(stackReadLine(s)){
+      if(s=="START")command=tpkboot::Command::Start;
+      else if(s=="DIAG")command=tpkboot::Command::Diagnostic;
+      else if(s=="BODY CALIBRATION")command=tpkboot::Command::Calibration;
+    }
+    const uint32_t now=millis();
+    const auto physical=stackBoard.touch();
+    const auto action=gate.update(now,physical,command);
+    if(command==tpkboot::Command::Calibration)stackBody.reportCalibration();
+    if(command==tpkboot::Command::Diagnostic)Serial.println("DONE DIAG: auto start paused");
+    if(action!=tpkboot::Action::Wait){
+      stackTouchRouter.block(physical);
+      Serial.println(action==tpkboot::Action::StartAuto?"BOOT START auto":
+          action==tpkboot::Action::StartTouch?"BOOT START touch":"BOOT START serial");
+      return;
+    }
+    const int status=gate.automatic()?int(gate.secondsLeft(now)):-1;
+    if(status!=shown){stackBootStatus(gate.automatic(),gate.secondsLeft(now));shown=status;}
+    delay(20);
+  }
+}
+#endif
+
 void setup() {
   Serial.setRxBufferSize(8192);  // la transferencia a SD llega en bloques de 2 KB
   Serial.begin(115200);
@@ -416,20 +472,9 @@ void setup() {
   }
   auto status=stackBoard.begin();
   if(status!=BootStatus::Ok || !gfx->begin()) { Serial.printf("K151 init failed: %u\n",unsigned(status)); return; }
-  // This is a development build, not a factory-compatible firmware.
-  // Explicit consent before accessing the game namespace or SD.
-  M5.Display.setCursor(10,10);
-  M5.Display.println("Experimental K151 game");
-  M5.Display.println("Serial START to initialize");
-  for(;;) {
-    stackBoard.update();
-    String s;
-    if(stackReadLine(s)){
-      if(s=="START")break;
-      if(s=="BODY CALIBRATION")stackBody.reportCalibration();
-    }
-    delay(20);
-  }
+  // User-approved standalone startup; diagnostic mode retains the
+  // pre-game NVS/SD boundary for supervised hardware checks.
+  stackBootWait();
   setenv("TZ","UTC0",1); tzset();
 #endif
   loadLang();  // idioma guardado (ES por defecto)
@@ -478,7 +523,12 @@ void setup() {
 
 #endif
 #if BOARD_STACKCHAN
-  if(!pet.beginWithNamespace(TPK_NVS_NAMESPACE)) { Serial.println("Game NVS unavailable"); return; }
+  if(!pet.beginWithNamespace(TPK_NVS_NAMESPACE)) {
+    Serial.println("Game NVS unavailable");
+    M5.Display.fillScreen(0);M5.Display.setTextSize(2);
+    M5.Display.setTextColor(0xFFFF,0);M5.Display.drawString("Game NVS unavailable",10,20);
+    return;
+  }
 #else
   pet.begin();
 #endif

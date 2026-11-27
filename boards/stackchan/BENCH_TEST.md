@@ -396,6 +396,21 @@ remain operator evidence; no claim about protected/reserved bits. B11k
 performance, UI, battery wake, save/RTC and final post-game checkpoints
 remain pending. No new firmware required for these tests.
 
+## B11l standalone startup (candidate)
+Owner reported B11 cannot start after a battery-only power cycle without a
+Serial host. B11l adds a 3-second auto-start menu, touch START GAME and
+DIAGNOSTIC MODE; any contact pauses auto-start, held-at-entry and drag-out
+contacts cannot start. Serial START retained; DIAG/BODY CALIBRATION pauses.
+No game NVS/SD access while paused; existing hardware and NVS guard checks
+unchanged. No new NVS key, motor/OTA/eFuse write or partition change. Unit
+policy tests cover countdown, wrap, held touch, drag-out, serial and deadline
+priority. For the next supervised first boot, select diagnostic within the
+countdown, confirm paused, then reenter ROM. If missed, record game startup
+rather than claiming pre-game evidence. Battery-only cold boot, manual start,
+paused diagnosis, retained save, SD and exact binary review pending. B11k
+performance evidence may be collected on the new audited candidate; record
+source version explicitly.
+
 ## Before any write
 - Record K151 hardware revision, factory firmware version, USB port and power source.
 - Optional: capture and verify two full factory reads using stackchan_backup.py. Store privately. Factory restoration is outside project scope.
@@ -415,7 +430,7 @@ Do not include credentials, MAC or private flash images in public issues.
 | --- | --- |
 | Boot | Correct board, 16 MiB flash, 8 MiB PSRAM, 320x240; no reset loop |
 | Calibration | Before START, BODY CALIBRATION reports signed NVS centers without writes or motor output; compare with independently recorded factory values; missing values block motion |
-| START | No game namespace creation until explicit START |
+| START | B11 and earlier: explicit Serial START; B11l: standalone auto/touch/Serial start after guard checks, diagnostic pause before game namespace and SD access |
 | LCD | Correct red/green/blue, orientation and full viewport, no tearing |
 | Touch | All four center corners; all five side buttons; crossing cancels; wake-only |
 | Game | Starter, egg, feed, bath, light, play, strength, evolution, farewell |
