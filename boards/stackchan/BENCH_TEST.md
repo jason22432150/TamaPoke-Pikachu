@@ -637,3 +637,44 @@ No battery-only start until warm-reset evidence reviewed; no power policy or
 charging changes, no motor output, no NVS migration, no partition changes.
 A subsequent power-on may lose RTC data or retain stale prior; never treat
 absence/presence alone as proof of battery fault location.
+
+### B11n2 USB hardware acceptance — PASS (owner/Codex evidence, 2026-11-27)
+Evidence archive SHA256 783ed4bdfd01c13675c0de90ca17e7132ed4ca6eb94bfca56e71da9e59f9106a;
+reviewed offline, no raw device identifiers or private snapshots committed.
+All four archived candidate bytes match their pinned SHA256 and readbacks.
+Six snapshot manifests and all listed file digests verified; same device,
+112 named readable fields per snapshot, all six summary files byte-identical.
+Includes B11m original before, final post-failure, B11n preflight, before
+write, after write, and after first boot. Secure Boot/Flash Encryption disabled,
+SPI_BOOT_CRYPT_CNT=0, layout/table match. Protected/reserved bits unproven.
+USB baseline before restart: reset_reason=1, prior_valid=0, attempt=1,
+seq=36, seen=0x000000ffc3de9fff, last=26, error_stage=0, error_detail=0.
+After controlled restart: ROM RTC_SW_CPU_RST, reset_reason=3, prior_valid=1,
+prior attempt=1 seq=37 seen=0x000000ffd3de9fff last=29,
+current attempt=2 seq=71 seen=0x000000ffc3d29fff last=26,
+both error_stage/detail=0. Standalone trace files match raw session excerpts.
+USB power-on baseline contains stages 19/20 (Unified first high write before
+and successful return); warm reset does not. GFX first high 14/15 absent in
+both; stages 13/16, 18/21, 37-40 present in both. Source start() returns early
+when OUT bit7 already high; USB warm omission consistent with that branch,
+not direct measurement of rail state. Stage 19/20 demonstrates software
+write and return on USB, not exact waveform nor battery fault location.
+No observed instrumented I2C error; unchecked transactions remain outside
+coverage. RTC retention validated only for controlled software restart.
+Earlier sessions encountered USB_UART_CHIP_RESET, download mode, and one
+auto game entry; final paused attempt succeeded. No battery-only test yet.
+Local esptool 5.1.0/bitstring 4.4.0 environment worked; isolated bitstring
+5.0.0 import failed; preserve failed output directories. No dependency or
+firmware changes in this documentation update.
+Next gate: fresh post-warm read-only probe/compare with original B11n before,
+then return to USB diagnostic menu, capture baseline and confirm safe battery
+handover in paused mode. If abnormal heat, odor, swelling, spontaneous reset,
+or failed handover, stop. Otherwise only one supervised battery-only cold
+start with SD/external accessories removed, no extra retry. Record video or
+observations and exact connection/reset order. If failure and no electrical
+hazard, recover via USB once, capture first available prior/current trace
+without deliberate reset, then read-only final checkpoint. USB attachment
+or serial open can reset CPU and replace prior; absence/stale prior after
+power loss is inconclusive. If retention cannot identify the failed attempt,
+investigate single-stage isolation or qualified independently powered capture;
+do not repeat B11m or alter charging/protection/boost settings speculatively.
