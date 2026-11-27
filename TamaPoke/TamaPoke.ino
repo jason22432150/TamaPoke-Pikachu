@@ -29,6 +29,7 @@
 #include "serial_line_policy.h"
 #include "head_touch.h"
 #include "boot_start_policy.h"
+#include "boot_trace.h"
 #else
 #include "TouchDrvCSTXXX.hpp"
 #endif
@@ -428,6 +429,8 @@ static void stackBootStatus(bool automatic,uint32_t seconds){
 }
 static void stackBootWait(){
   stackBootMenu();
+  tpk_boot_mark(tpktrace::MenuReady,0);
+  tpk_boot_report();
   tpkboot::Gate gate(millis());
   int shown=-2;
   for(;;){
@@ -438,6 +441,11 @@ static void stackBootWait(){
       if(s=="START")command=tpkboot::Command::Start;
       else if(s=="DIAG")command=tpkboot::Command::Diagnostic;
       else if(s=="BODY CALIBRATION")command=tpkboot::Command::Calibration;
+      else if(s=="BOOTTRACE?")tpk_boot_report();
+      else if(s=="BOOTTRACE RESTART"){
+        if(!gate.automatic())tpk_boot_restart();
+        else Serial.println("ERR BOOTTRACE pause in DIAGNOSTIC MODE first");
+      }
     }
     const uint32_t now=millis();
     const auto physical=stackBoard.touch();
@@ -458,6 +466,9 @@ static void stackBootWait(){
 #endif
 
 void setup() {
+#if BOARD_STACKCHAN
+  tpk_boot_begin();
+#endif
   Serial.setRxBufferSize(8192);  // la transferencia a SD llega en bloques de 2 KB
   Serial.begin(115200);
   // CRITICO: sin esto, Serial.print BLOQUEA el juego cuando no hay un
@@ -466,15 +477,26 @@ void setup() {
   Serial.setTxTimeoutMs(0);
   Serial.printf("TamaPoke fw v%s (%s)\n", FW_VERSION, BOARD_NAME);
 #if BOARD_STACKCHAN
+  tpk_boot_mark(tpktrace::SerialReady,0);
+  tpk_boot_mark(tpktrace::NvsBefore,0);
   if (!stackchanNvsReady()) {
+    tpk_boot_mark(tpktrace::InitFail,0x1000u);
+    tpk_boot_report();
     Serial.println("K151 NVS initialization failed; automatic format disabled");
     return;
   }
+  tpk_boot_mark(tpktrace::NvsAfter,0);
   auto status=stackBoard.begin();
-  if(status!=BootStatus::Ok || !gfx->begin()) { Serial.printf("K151 init failed: %u\n",unsigned(status)); return; }
+  if(status!=BootStatus::Ok || !gfx->begin()) {
+    tpk_boot_mark(tpktrace::InitFail,0x2000u|unsigned(status));
+    tpk_boot_report();
+    Serial.printf("K151 init failed: %u\n",unsigned(status)); return;
+  }
+  tpk_boot_mark(tpktrace::CanvasReady,0);
   // User-approved standalone startup; diagnostic mode retains the
   // pre-game NVS/SD boundary for supervised hardware checks.
   stackBootWait();
+  tpk_boot_mark(tpktrace::MenuExit,0);
   setenv("TZ","UTC0",1); tzset();
 #endif
   loadLang();  // idioma guardado (ES por defecto)
@@ -574,6 +596,7 @@ void setup() {
   Serial.println(stackHead.begin()?"HEAD ready":"HEAD unavailable (game continues)");
   // Opt-in RGB remains unchanged; user can explicitly enable AUTO or TEST.
   stackGameReady=true;
+  tpk_boot_mark(tpktrace::GameReady,0);
 #endif
 }
 
@@ -945,6 +968,7 @@ void handleSerial() {
   }
 #endif
 #if BOARD_STACKCHAN
+  if(line=="BOOTTRACE?"){tpk_boot_report();return;}
   if(line=="LCD?" || line=="LCD RESET" || line=="LCD FULL" || line=="LCD DIRTY"){
     if(line=="LCD RESET")stackCanvas.resetLcdCounters();
     else if(line=="LCD FULL")stackCanvas.setDirtyEnabled(false);

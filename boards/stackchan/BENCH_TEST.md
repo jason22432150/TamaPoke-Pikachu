@@ -569,3 +569,31 @@ M5.begin, rail state at boot and whether boost was already high; review official
 hardware topology and consider an independently powered UART receive-only
 capture or qualified bench measurements, without backfeeding USB or changing
 protection. No new firmware or electrical settings in this commit.
+
+### B11n2 startup tracing (diagnostic candidate, NOT FOR FLASH)
+Owner confirmed B11m USB cold start and three-second menu; no observed
+abnormal heat, odor or swelling. USB raw log and post-five-attempt named
+eFuse snapshot still pending. B11m remains withdrawn; no further B11m flash
+or battery attempts. Original StackChan v1.6.0 bc60de1 and v1.6.2 28b9f0c
+initialize PMIC and turn backlight off before AW9523, wait 50 ms after AW9523,
+restore brightness last. M5GFX autodetect may assert BOOST_EN before PMIC
+configuration; M5Unified setExtOutput is a third control path. Original
+sdkconfig disables SPIRAM_MEMTEST; our extra PSRAM self-test precedes M5.begin.
+These are hypotheses, not confirmed causes. B11n2 retains B11m electrical
+policy, writes, time constants and PSRAM checks; adds trace only. RTC_NOINIT
+checksummed alternating slots (44 bytes each), record prior/current, 64-bit
+stage mask, first error and reset reason, no NVS/Flash trace writes. RTC may
+lose state on full power loss; prior attribution remains unverified even on
+warm reset. Trace writes can perturb pulse timing; not an electrical proof.
+Read BOOTTRACE? at paused menu or game; BOOTTRACE RESTART only while paused,
+USB-connected, supervised, no new cold-start attempt until exact ELF audit.
+Stages 1-30: setup/serial/NVS/flash/PSRAM/M5/first boost/direction/menu/game;
+31 GfxLdoBefore, 32 GfxLdoAfter, 33 LightBefore, 34 LightAfter,
+35 UnifiedPmicBefore, 36 UnifiedPmicAfter, 37 ExtBefore, 38 ExtAfter,
+39 ExtWriteBefore, 40 ExtWriteAfter, 41 ExtI2cFail. Inspect boot_trace.h for
+all enum IDs. ExtWriteBefore detail low byte P0, high byte P1; ExtAfter detail
+is cancellation flag; result flags are I2C return values, not rail voltage.
+Capture reset_reason and prior/current on USB before/after controlled warm
+reset. Retain all logs. If power loss destroys trace, design one-stage
+isolation candidates after separate review. Do not copy original PMIC voltage,
+charging, protection, NVS erase or servo settings. No allowlist expansion here.

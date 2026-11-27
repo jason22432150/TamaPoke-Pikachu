@@ -21,6 +21,7 @@ jobs:
       - run: make -C TamaPoke/test CXX=g++ ${{ matrix.target }}
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_coordinates.cpp -o /tmp/coordinates && /tmp/coordinates
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_boost_start_policy.cpp -o /tmp/boost_start && /tmp/boost_start
+      - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_boot_trace.cpp -o /tmp/boot_trace && /tmp/boot_trace
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_boot_start_policy.cpp -o /tmp/boot_start && /tmp/boot_start
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_body_policy.cpp -o /tmp/body_policy && /tmp/body_policy
       - run: g++ -std=c++11 -Wall -Wextra -Werror -fsanitize=undefined boards/stackchan/test_serial_head_policy.cpp -o /tmp/serial_head && /tmp/serial_head
@@ -63,8 +64,8 @@ jobs:
           arduino-cli core install "esp32:esp32@$ESP32_VERSION" --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli lib install --no-deps "M5GFX@$M5GFX_VERSION" "M5Unified@$M5UNIFIED_VERSION"
           python3 tools/patch_stackchan_m5gfx.py "$(arduino-cli config get directories.user)/libraries/M5GFX"
-          python3 tools/patch_stackchan_boost.py "$(arduino-cli config get directories.user)/libraries"
-          python3 tools/patch_stackchan_boost.py "$(arduino-cli config get directories.user)/libraries" --check
+          python3 tools/patch_stackchan_boot_trace.py "$(arduino-cli config get directories.user)/libraries"
+          python3 tools/patch_stackchan_boot_trace.py "$(arduino-cli config get directories.user)/libraries" --check
           python3 tools/patch_stackchan_m5gfx.py "$(arduino-cli config get directories.user)/libraries/M5GFX" --check
           arduino-cli lib install "U8g2@$U8G2_VERSION"
           # StackChan uses the upstream Arduino 4 compatibility fix; keep Waveshare on its released dependency.

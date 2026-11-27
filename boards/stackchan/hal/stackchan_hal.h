@@ -1,6 +1,12 @@
 #pragma once
 #include "board_hal.h"
 #include "efuse_policy.h"
+#if defined(TPK_BOOT_TRACE) && TPK_BOOT_TRACE
+#include "boot_trace.h"
+#define TPK_HAL_MARK(stage,detail) tpk_boot_mark(tpktrace::stage,detail)
+#else
+#define TPK_HAL_MARK(stage,detail) ((void)0)
+#endif
 #include <M5Unified.h>
 #include <Arduino.h>
 #include <esp_heap_caps.h>
@@ -25,21 +31,27 @@ class StackChanHAL final : public BoardHAL {
   }
 public:
   BootStatus begin() override {
+    TPK_HAL_MARK(FlashCheck,0);
     Serial.println("K151 boot: flash check");
     if (ESP.getFlashChipSize()!=16UL*1024*1024) return BootStatus::Flash;
     Serial.println("K151 boot: PSRAM check");
+    TPK_HAL_MARK(PsramBefore,0);
     if (!testPsram()) return BootStatus::Psram;
+    TPK_HAL_MARK(PsramAfter,0);
     Serial.println("K151 boot: M5.begin");
     auto cfg=M5.config();
     cfg.internal_mic=false;
     cfg.internal_spk=true;
+    TPK_HAL_MARK(M5Before,0);
     M5.begin(cfg);
+    TPK_HAL_MARK(M5After,0);
     Serial.println("K151 boot: M5.begin returned");
     if(M5.getBoard()!=m5gfx::board_t::board_M5StackChan) return BootStatus::Board;
     if(M5.Display.width()!=320 || M5.Display.height()!=240) M5.Display.setRotation(1);
     if(M5.Display.width()!=320 || M5.Display.height()!=240) return BootStatus::Display;
     if(!M5.Touch.isEnabled()) return BootStatus::Touch;
     Serial.println("K151 boot: board/display/touch ready");
+    TPK_HAL_MARK(DisplayReady,0);
     ready_=true;
     return BootStatus::Ok;
   }
@@ -56,3 +68,5 @@ public:
   void brightness(uint8_t value) override { if(ready_) M5.Display.setBrightness(value); }
   bool rtcAvailable() const { return ready_ && M5.Rtc.isEnabled(); }
 };
+
+#undef TPK_HAL_MARK
