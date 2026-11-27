@@ -100,12 +100,14 @@ def trace_specs():
     # writeRegister8Array call appears for other boards.
     pmic_tail=b'      // The touch INT is routed to the ESP32 as TOUCH_INT -> AW9523 P1_2 -> AW9523 INTN\n'
     pmic_full=pmic+pmic_tail
-    pmic_new=b'''      const bool tracePmic=tpk_boot_early();
-      if(tracePmic)tpk_boot_mark(tpktrace::UnifiedPmicBefore,0);
-      const bool tracePmicOk=Axp2101.writeRegister8Array(reg_data_array, sizeof(reg_data_array));
-      if(tracePmic){
-        if(!tracePmicOk)tpk_boot_mark(tpktrace::UnifiedI2cFail,0x400u);
-        tpk_boot_mark(tpktrace::UnifiedPmicAfter,uint32_t(tracePmicOk));
+    pmic_new=b'''      {
+        const bool tracePmic=tpk_boot_early();
+        if(tracePmic)tpk_boot_mark(tpktrace::UnifiedPmicBefore,0);
+        const bool tracePmicOk=Axp2101.writeRegister8Array(reg_data_array, sizeof(reg_data_array));
+        if(tracePmic){
+          if(!tracePmicOk)tpk_boot_mark(tpktrace::UnifiedI2cFail,0x400u);
+          tpk_boot_mark(tpktrace::UnifiedPmicAfter,uint32_t(tracePmicOk));
+        }
       }
 '''+pmic_tail
     ext_read=b'    if (M5.In_I2C.readRegister(aw9523_i2c_addr, port0_reg, buf, sizeof(buf), i2c_freq))\n'
