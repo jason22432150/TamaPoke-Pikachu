@@ -31,8 +31,8 @@ from stackchan_deploy_review import plan, readback, checkpoints
 # B11l: archived build 45931554248, fixed ELF audit 45933053881.
 # Bounded reference-function comparison to B11; supervised ROM-only install.
 # B11m: archived build 45945886585, exact ELF audit 45956353073.
-# Bounded eFuse and boost startup instruction review; supervised ROM-only
-# install for electrical bench validation, not an electrical safety attestation.
+# Owner reports 0/5 battery cold starts; withdraw from new writes pending diagnosis.
+# Retain only for read-only verification of an existing installation.
 # Retain the previously approved tuples for supervised recovery.
 APPROVED_BUILDS=frozenset({(
     "871e6d8851c6b7348bbf5a0d71a80affa10e1e32",
@@ -70,18 +70,19 @@ APPROVED_BUILDS=frozenset({(
     "b9d4470ee0c4ac7053a8b6ff388e1760db76bc51bbf8efbbd2b2f4f853e9a54a",
     "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
     "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
-),(
-    "d830ac15cc1761aa421b33035ccfa0bb5f93fd1c",
-    "89a958cdeb364677fb217072750fe3b6c2c7ca00e6bf8d5fb6398ff2696316d8",
-    "4a8a63d4166d8d058389cc469519c6f0ccae315a6939cadaae64e6c7f0532ea5",
-    "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
-    "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+
 )})
 # Previously approved images may still be verified, read-only.
 CHECKPOINT_BUILDS=frozenset({(
     "bb5234ef25ca5903309028b76afcbc29dc414011",
     "8a7d2bb8a3ea22e1b8d9d44c2ec0e965727231066feda335234a16ac8ea0de0a",
     "d0d54b1feab01787a8b36f606b00f29ede2f4375d5b8b1c48577a83b8644ed2b",
+    "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
+    "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+),
+    "d830ac15cc1761aa421b33035ccfa0bb5f93fd1c",
+    "89a958cdeb364677fb217072750fe3b6c2c7ca00e6bf8d5fb6398ff2696316d8",
+    "4a8a63d4166d8d058389cc469519c6f0ccae315a6939cadaae64e6c7f0532ea5",
     "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
     "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
 )})

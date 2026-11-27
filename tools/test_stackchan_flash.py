@@ -105,8 +105,8 @@ class FlashTests(unittest.TestCase):
             "48da0866f56d9d8eb1fe786412984d8f1a4a01b3f13f965621fcb916761e1a4b",
             "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
         )
-        self.assertEqual(APPROVED_BUILDS,frozenset({fixed,landscape,interaction,fps,optimized,standalone,coldboot}))
-        self.assertEqual(CHECKPOINT_BUILDS,frozenset({approved}))
+        self.assertEqual(APPROVED_BUILDS,frozenset({fixed,landscape,interaction,fps,optimized,standalone}))
+        self.assertEqual(CHECKPOINT_BUILDS,frozenset({approved,coldboot}))
         names=("TamaPoke.ino.bootloader.bin","TamaPoke.ino.bin",
                "TamaPoke.ino.partitions.bin","ota_data_initial.bin")
         def as_plan(t):
@@ -114,7 +114,9 @@ class FlashTests(unittest.TestCase):
                 dict(name=n,sha256=h) for n,h in zip(names,t[1:])])
         with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
             require_approved(as_plan(approved))
-        for candidate in (fixed,landscape,interaction,fps,optimized,standalone,coldboot):
+        with self.assertRaisesRegex(ValueError,"NOT FOR FLASH"):
+            require_approved(as_plan(coldboot))
+        for candidate in (fixed,landscape,interaction,fps,optimized,standalone):
             require_approved(as_plan(candidate))
             for i in range(len(candidate)):
                 tampered=list(candidate)

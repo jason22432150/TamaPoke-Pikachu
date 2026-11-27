@@ -546,3 +546,22 @@ USB cold start/unplug, save/SD/RTC, touch/audio/head/RGB, final read-only
 eFuse checkpoint. Do not intentionally deep-discharge or bypass protections.
 B11l installation evidence and B11k performance validation remain pending
 unless separately supplied; do not label them PASS from CI.
+
+### B11m bench result: FAIL (owner report)
+Owner reports five battery-only cold starts failed (0/5); all other B11m
+functional checks marked NOT RUN. Actual preflight/write/first-boot JSON
+not supplied. Do not infer USB boot status, exact failure stage, or eFuse
+checkpoint results. The boost precharge candidate did not resolve the observed
+symptom. Withdraw its exact tuple from APPROVED_BUILDS; retain it in
+CHECKPOINT_BUILDS for read-only verification of existing installations.
+No further battery cold-start attempts or speculative pulse/PMIC changes.
+B11n diagnosis: if no abnormal heat/swelling/odor or other electrical fault,
+confirm USB-powered normal startup once, observe boot menu and capture
+available serial boot messages at 115200; if normal, record battery voltage,
+charging/USB state and uptime before/after disconnect only if safe. Collect
+existing installation eFuse JSON (no new write). Do not claim that USB logs
+locate the battery-only fault. Next examine early initialization before
+M5.begin, rail state at boot and whether boost was already high; review official
+hardware topology and consider an independently powered UART receive-only
+capture or qualified bench measurements, without backfeeding USB or changing
+protection. No new firmware or electrical settings in this commit.
